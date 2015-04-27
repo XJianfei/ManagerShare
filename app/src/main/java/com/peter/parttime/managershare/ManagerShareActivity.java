@@ -13,8 +13,10 @@ import android.support.v7.widget.RecyclerView;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.util.Log;
+import android.view.View;
 import android.view.Window;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -39,6 +41,7 @@ public class ManagerShareActivity extends Activity {
     private List<Paper> mPapers = new CopyOnWriteArrayList<Paper>();
 
     private boolean mLoading = false;
+    private ProgressBar mLoadingProgressBar = null;
 
     public boolean isLoading() { return mLoading;}
     private void setLoading(boolean l) { mLoading = l;}
@@ -72,7 +75,6 @@ public class ManagerShareActivity extends Activity {
             public void onThumbnailDownloaded(ImageView imageView,
                                               Bitmap bitmap) {
                 imageView.setImageBitmap(bitmap);
-                dbg("set image bitmap done");
             }
         });
 
@@ -101,12 +103,15 @@ public class ManagerShareActivity extends Activity {
                     dbg("Loading more");
                     setLoading(true);
                     mCurrentPage++;
+                    mLoadingProgressBar.setVisibility(View.VISIBLE);
                     new Thread(mRunnable).start();
                 }
             }
         });
 
         mRecyclerView.setAdapter(mPaperAdapter);
+
+        mLoadingProgressBar = (ProgressBar) findViewById(R.id.loadingprogressbar);
 
         new Thread(mRunnable).start();
 
@@ -118,6 +123,8 @@ public class ManagerShareActivity extends Activity {
         @Override
         public void handleMessage(Message msg) {
             mPaperAdapter.notifyDataSetChanged();
+            setLoading(false);
+            mLoadingProgressBar.setVisibility(View.GONE);
         }
     };
 
@@ -146,7 +153,6 @@ public class ManagerShareActivity extends Activity {
                             date));
                 }
                 mHandler.sendEmptyMessage(0);
-                setLoading(false);
             } catch (IOException e) {
                 e.printStackTrace();
             }

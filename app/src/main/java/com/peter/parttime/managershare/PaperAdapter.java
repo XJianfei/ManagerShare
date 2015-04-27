@@ -43,7 +43,6 @@ public class PaperAdapter extends RecyclerView.Adapter<PaperAdapter.ViewHolder> 
         holder.mImageView.setTag(p.mPicture);
 
         Bitmap bitmap = null;
-        ManagerShareActivity.dbg("url: " + p.mPicture);
 
         if ((bitmap = mThumbnailDownloader.getCacheImage(p.mPicture)) != null) {
             holder.mImageView.setImageBitmap(bitmap);
