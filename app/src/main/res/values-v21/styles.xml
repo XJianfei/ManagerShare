@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="AppTheme" parent="android:Theme.Material.Light">
+        <!--
+        <item name="android:colorPrimary">@color/carview_backgroud</item>
+        <item name="android:colorPrimaryDark">@color/carview_backgroud</item>
+        -->
     </style>
 </resources>
