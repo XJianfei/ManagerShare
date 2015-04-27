@@ -1,12 +1,11 @@
 package com.peter.parttime.managershare;
 
 import android.app.Activity;
-import android.content.Context;
 import android.graphics.Bitmap;
-import android.media.Image;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -17,6 +16,7 @@ import android.view.View;
 import android.view.Window;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
+import android.widget.Toast;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -32,9 +32,11 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 
-public class ManagerShareActivity extends Activity {
+public class ManagerShareActivity extends Activity implements
+        SwipeRefreshLayout.OnRefreshListener {
     public static final String TAG = "WebCrawler";
 
+    private SwipeRefreshLayout mSwipeLayout;
     private RecyclerView mRecyclerView;
     private PaperAdapter mPaperAdapter;
     private LinearLayoutManager mLayoutManager;
@@ -56,6 +58,9 @@ public class ManagerShareActivity extends Activity {
     public static void error(String msg) {
         Log.e(TAG, "" + msg);
     }
+    public static void info(String msg) {
+        Log.i(TAG, "" + msg);
+    }
 
     @Override
     protected void onDestroy() {
@@ -63,6 +68,8 @@ public class ManagerShareActivity extends Activity {
         mThumbnailDownloader.clearQueue();
     }
 
+
+    private long mLastScrollTime = 0;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -95,7 +102,6 @@ public class ManagerShareActivity extends Activity {
                 super.onScrolled(recyclerView, dx, dy);
                 if (isLoading()) return;
 
-                int first = mLayoutManager.findFirstVisibleItemPosition();
                 int last = mLayoutManager.findLastVisibleItemPosition();
                 int count = mLayoutManager.getItemCount();
 
@@ -104,40 +110,117 @@ public class ManagerShareActivity extends Activity {
                     setLoading(true);
                     mCurrentPage++;
                     mLoadingProgressBar.setVisibility(View.VISIBLE);
-                    new Thread(mRunnable).start();
+
+                    new Thread(mGetNextPageRunnable).start();
                 }
             }
         });
 
         mRecyclerView.setAdapter(mPaperAdapter);
+        mRecyclerView.setScrollBarSize(30);
+        mRecyclerView.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
 
         mLoadingProgressBar = (ProgressBar) findViewById(R.id.loadingprogressbar);
 
-        new Thread(mRunnable).start();
+        mSwipeLayout = (SwipeRefreshLayout) findViewById(R.id.swipe_container);
+        mSwipeLayout.setOnRefreshListener(this);
+
+        new Thread(mGetNextPageRunnable).start();
 
         mThumbnailDownloader.start();
         mThumbnailDownloader.getLooper();
     }
 
+    @Override
+    public void onRefresh() {
+        dbg("refreshing: " + mSwipeLayout.isRefreshing());
+        new Thread(mUpdateHomePageRunnable).start();
+    }
+
+    private static final int MSG_LOAD_NEXT_PAGE_DONE = 0;
+    private static final int MSG_UPDATE_HOME_PAGE_DONE = 1;
+    private static final int MSG_SHOW_LAST_CONTENTS_HINT = 2;
+
     private Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
-            mPaperAdapter.notifyDataSetChanged();
-            setLoading(false);
-            mLoadingProgressBar.setVisibility(View.GONE);
+            switch (msg.what) {
+                case MSG_LOAD_NEXT_PAGE_DONE:
+                    mPaperAdapter.notifyDataSetChanged();
+                    setLoading(false);
+                    mLoadingProgressBar.setVisibility(View.GONE);
+                        break;
+                case MSG_UPDATE_HOME_PAGE_DONE:
+                    mPaperAdapter.notifyDataSetChanged();
+                    mSwipeLayout.setRefreshing(false);
+                    break;
+                case MSG_SHOW_LAST_CONTENTS_HINT:
+                    Toast.makeText(ManagerShareActivity.this,
+                            R.string.update_to_date, Toast.LENGTH_SHORT).show();;
+                    mSwipeLayout.setRefreshing(false);
+                    break;
+
+                default:
+                    break;
+            }
         }
     };
 
     private int mCurrentPage = 0;
-    private Runnable mRunnable = new Runnable() {
+    private Document getWebDocument(int page) throws IOException {
+        String url = html;
+        if (page != 0)
+            url += "/?&page=" + page;
+        dbg("http:" + url);
+        Document doc = Jsoup.connect(url).get();
+        return doc;
+    }
+    private Document getWebDocument() throws IOException {
+        return getWebDocument(mCurrentPage);
+    }
+    private Runnable mUpdateHomePageRunnable = new Runnable() {
         @Override
         public void run() {
             try {
-                String url = html;
-                if (mCurrentPage != 0)
-                    url += "/?&page=" + mCurrentPage;
-                dbg("http:" + url);
-                Document doc = Jsoup.connect(url).get();
+                Document doc = getWebDocument(0);
+                Elements papers = doc.select(".post_list li");
+                String lastPaper = mPapers.get(0).mTitle;
+                List<Paper> news = new CopyOnWriteArrayList<Paper>();
+                for (Element paper : papers) {
+                    String title = paper.select("h3").text();
+                    dbg("Update: " + title + "  ?= " + lastPaper);
+                    if (lastPaper.equals(title)) {
+                        break;
+                    }
+
+                    String summary = paper.getElementsByClass("post_summary").text();
+                    String imgSrc = paper.select(".lazy").first().attr("data-original");
+                    String date = paper.select(".post_meta").text();
+                    dbg("article: " + title +
+                            summary +
+                            " @" + imgSrc);
+                    news.add(new Paper(title,
+                            summary,
+                            imgSrc,
+                            date));
+                }
+                if (news.size() == 0) {
+                    mHandler.sendEmptyMessage(MSG_SHOW_LAST_CONTENTS_HINT);
+                    return;
+                } else {
+                    mPapers.addAll(0, news);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            mHandler.sendEmptyMessage(MSG_UPDATE_HOME_PAGE_DONE);
+        }
+    };
+    private Runnable mGetNextPageRunnable = new Runnable() {
+        @Override
+        public void run() {
+            try {
+                Document doc = getWebDocument();
                 Elements papers = doc.select(".post_list li");
                 for (Element paper: papers) {
                     String title = paper.select("h3").text();
@@ -152,7 +235,7 @@ public class ManagerShareActivity extends Activity {
                             imgSrc,
                             date));
                 }
-                mHandler.sendEmptyMessage(0);
+                mHandler.sendEmptyMessage(MSG_LOAD_NEXT_PAGE_DONE);
             } catch (IOException e) {
                 e.printStackTrace();
             }
