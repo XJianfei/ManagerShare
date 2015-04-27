@@ -24,17 +24,31 @@
                 android:id="@+id/title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:paddingTop="5dp"
                 android:textStyle="bold"
                 android:textColor="@color/carview_font_color"
-                android:textSize="15dp" />
+                android:textSize="14dp" />
             <TextView
                 android:id="@+id/summary"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:paddingTop="9dp"
+                android:layout_weight="2"
+                android:singleLine="false"
+                android:maxLines="3"
+                android:ellipsize="end"
+                android:paddingTop="5dp"
                 android:textColor="@color/carview_font_color"
                 android:textSize="12dp" />
+            <TextView
+                android:id="@+id/date"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:paddingTop="3dp"
+                android:textColor="@color/carview_font_color"
+                android:textSize="10dp" />
+
         </LinearLayout>
         <ImageView
             android:id="@+id/pic"

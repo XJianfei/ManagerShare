@@ -37,6 +37,7 @@ public class PaperAdapter extends RecyclerView.Adapter<PaperAdapter.ViewHolder> 
     public void onBindViewHolder(ViewHolder holder, int position) {
         ManagerShareActivity.Paper p = mPapers.get(position);
         holder.mTitleTextView.setText(p.mTitle);
+        holder.mDateTextView.setText(p.mDate);
         holder.mSummaryTextView.setText(p.mSummary);
         holder.mImageView.setImageDrawable(mContext.getDrawable(R.drawable.p1));
         holder.mImageView.setTag(p.mPicture);
@@ -59,6 +60,7 @@ public class PaperAdapter extends RecyclerView.Adapter<PaperAdapter.ViewHolder> 
     public static class ViewHolder extends RecyclerView.ViewHolder {
         public TextView mTitleTextView;
         public TextView mSummaryTextView;
+        public TextView mDateTextView;
         public ImageView mImageView;
         public Drawable mPicture;
         public ViewHolder(View v) {
@@ -66,6 +68,7 @@ public class PaperAdapter extends RecyclerView.Adapter<PaperAdapter.ViewHolder> 
             mTitleTextView = (TextView) v.findViewById(R.id.title);
             mSummaryTextView = (TextView) v.findViewById(R.id.summary);
             mImageView = (ImageView) v.findViewById(R.id.pic);
+            mDateTextView = (TextView) v.findViewById(R.id.date);
             mPicture = null;
         }
     }

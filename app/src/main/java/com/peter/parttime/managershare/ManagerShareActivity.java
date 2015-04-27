@@ -35,7 +35,13 @@ public class ManagerShareActivity extends Activity {
 
     private RecyclerView mRecyclerView;
     private PaperAdapter mPaperAdapter;
+    private LinearLayoutManager mLayoutManager;
     private List<Paper> mPapers = new CopyOnWriteArrayList<Paper>();
+
+    private boolean mLoading = false;
+
+    public boolean isLoading() { return mLoading;}
+    private void setLoading(boolean l) { mLoading = l;}
 
     private ThumbnailDownloader<ImageView> mThumbnailDownloader;
 
@@ -71,9 +77,34 @@ public class ManagerShareActivity extends Activity {
         });
 
         mRecyclerView = (RecyclerView) findViewById(R.id.list);
-        mRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        mLayoutManager = new LinearLayoutManager(this);
+        mRecyclerView.setLayoutManager(mLayoutManager);
         mRecyclerView.setItemAnimator(new DefaultItemAnimator());
         mPaperAdapter = new PaperAdapter(this, mPapers, mThumbnailDownloader);
+
+        mRecyclerView.setOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
+                super.onScrollStateChanged(recyclerView, newState);
+            }
+
+            @Override
+            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+                if (isLoading()) return;
+
+                int first = mLayoutManager.findFirstVisibleItemPosition();
+                int last = mLayoutManager.findLastVisibleItemPosition();
+                int count = mLayoutManager.getItemCount();
+
+                if ((last + 1) == count && dy > 0) {
+                    dbg("Loading more");
+                    setLoading(true);
+                    mCurrentPage++;
+                    new Thread(mRunnable).start();
+                }
+            }
+        });
 
         mRecyclerView.setAdapter(mPaperAdapter);
 
@@ -90,24 +121,32 @@ public class ManagerShareActivity extends Activity {
         }
     };
 
+    private int mCurrentPage = 0;
     private Runnable mRunnable = new Runnable() {
         @Override
         public void run() {
             try {
-                Document doc = Jsoup.connect(html).get();
+                String url = html;
+                if (mCurrentPage != 0)
+                    url += "/?&page=" + mCurrentPage;
+                dbg("http:" + url);
+                Document doc = Jsoup.connect(url).get();
                 Elements papers = doc.select(".post_list li");
                 for (Element paper: papers) {
                     String title = paper.select("h3").text();
                     String summary = paper.getElementsByClass("post_summary").text();
                     String imgSrc = paper.select(".lazy").first().attr("data-original");
+                    String date = paper.select(".post_meta").text();
                     dbg("article: " + title +
                             summary +
                             " @" + imgSrc);
                     mPapers.add(new Paper(title,
                             summary,
-                            imgSrc));
+                            imgSrc,
+                            date));
                 }
                 mHandler.sendEmptyMessage(0);
+                setLoading(false);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -165,22 +204,13 @@ public class ManagerShareActivity extends Activity {
         String mTitle;
         String mSummary;
         String mPicture;
+        String mDate;
 
-        public Paper (String title, String summary, String picture) {
+        public Paper (String title, String summary, String picture, String date) {
             mTitle = title;
             mSummary = summary;
             mPicture = picture;
-        }
-
-        public int getImageResourceId( Context context ) {
-            try {
-                return context.getResources().getIdentifier(this.mPicture, "drawable",
-                        context.getPackageName());
-
-            } catch (Exception e) {
-                e.printStackTrace();
-                return -1;
-            }
+            mDate = date;
         }
     }
 }
