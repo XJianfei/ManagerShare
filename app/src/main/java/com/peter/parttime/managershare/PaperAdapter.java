@@ -41,6 +41,8 @@ public class PaperAdapter extends RecyclerView.Adapter<PaperAdapter.ViewHolder> 
         holder.mSummaryTextView.setText(p.mSummary);
         holder.mImageView.setImageDrawable(mContext.getDrawable(R.drawable.p1));
         holder.mImageView.setTag(p.mPicture);
+        holder.mPaper = p;
+        holder.mListener = mListener;
 
         Bitmap bitmap = null;
 
@@ -56,12 +58,14 @@ public class PaperAdapter extends RecyclerView.Adapter<PaperAdapter.ViewHolder> 
         return mPapers == null ? 0 : mPapers.size();
     }
 
-    public static class ViewHolder extends RecyclerView.ViewHolder {
+    public static class ViewHolder extends RecyclerView.ViewHolder implements
+            View.OnClickListener {
         public TextView mTitleTextView;
         public TextView mSummaryTextView;
         public TextView mDateTextView;
         public ImageView mImageView;
         public Drawable mPicture;
+        public ManagerShareActivity.Paper mPaper;
         public ViewHolder(View v) {
             super(v);
             mTitleTextView = (TextView) v.findViewById(R.id.title);
@@ -69,6 +73,27 @@ public class PaperAdapter extends RecyclerView.Adapter<PaperAdapter.ViewHolder> 
             mImageView = (ImageView) v.findViewById(R.id.pic);
             mDateTextView = (TextView) v.findViewById(R.id.date);
             mPicture = null;
+            v.setClickable(true);
+            v.setOnClickListener(this);
         }
+
+        @Override
+        public void onClick(View v) {
+            ManagerShareActivity.dbg("click: " + mTitleTextView.getText());
+            if (mListener != null) {
+                mListener.onItemClickListener(v, mPaper);
+            }
+        }
+        public OnItemClickListener mListener = null;
+
+
+    }
+    private OnItemClickListener mListener = null;
+    public void setOnItemClickListener(OnItemClickListener l) {
+        mListener = l;
+    }
+
+    public interface OnItemClickListener {
+        void onItemClickListener(View v, ManagerShareActivity.Paper p);
     }
 }

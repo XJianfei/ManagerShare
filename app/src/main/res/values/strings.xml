@@ -4,4 +4,6 @@
     <string name="action_settings">Settings</string>
     <string name="loading">Loading...</string>
     <string name="update_to_date">Update to date</string>
+
+    <string name="invalid_url">Invalid URL</string>
 </resources>

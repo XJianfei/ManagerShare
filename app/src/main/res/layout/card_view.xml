@@ -28,7 +28,7 @@
                 android:paddingTop="5dp"
                 android:textStyle="bold"
                 android:textColor="@color/carview_font_color"
-                android:textSize="14dp" />
+                android:textSize="@dimen/card_title_size" />
             <TextView
                 android:id="@+id/summary"
                 android:layout_width="wrap_content"
@@ -39,7 +39,7 @@
                 android:ellipsize="end"
                 android:paddingTop="5dp"
                 android:textColor="@color/carview_font_color"
-                android:textSize="12dp" />
+                android:textSize="@dimen/card_summary_size" />
             <TextView
                 android:id="@+id/date"
                 android:layout_width="wrap_content"
@@ -47,7 +47,7 @@
                 android:layout_weight="1"
                 android:paddingTop="3dp"
                 android:textColor="@color/carview_font_color"
-                android:textSize="10dp" />
+                android:textSize="@dimen/card_date_size" />
 
         </LinearLayout>
         <ImageView

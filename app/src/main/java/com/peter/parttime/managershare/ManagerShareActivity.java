@@ -1,6 +1,8 @@
 package com.peter.parttime.managershare;
 
 import android.app.Activity;
+import android.content.ComponentName;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.Handler;
@@ -116,6 +118,7 @@ public class ManagerShareActivity extends Activity implements
             }
         });
 
+        mPaperAdapter.setOnItemClickListener(mOnItemClickListener);
         mRecyclerView.setAdapter(mPaperAdapter);
         mRecyclerView.setScrollBarSize(30);
         mRecyclerView.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
@@ -130,6 +133,20 @@ public class ManagerShareActivity extends Activity implements
         mThumbnailDownloader.start();
         mThumbnailDownloader.getLooper();
     }
+
+    private PaperAdapter.OnItemClickListener mOnItemClickListener =
+            new PaperAdapter.OnItemClickListener() {
+        @Override
+        public void onItemClickListener(View v, Paper p) {
+            dbg("--------" + p.mHref);
+            Intent intent = new Intent();
+            intent.setComponent(
+                    new ComponentName(ManagerShareActivity.this, WebArticleActivity.class));
+            intent.putExtra(WebArticleActivity.EXTRA_URL, html + "/" + p.mHref);
+            startActivity(intent);
+
+        }
+    };
 
     @Override
     public void onRefresh() {
@@ -146,7 +163,7 @@ public class ManagerShareActivity extends Activity implements
         public void handleMessage(Message msg) {
             switch (msg.what) {
                 case MSG_LOAD_NEXT_PAGE_DONE:
-                    mPaperAdapter.notifyDataSetChanged();
+                    mPaperAdapter.notifyItemRangeInserted(msg.arg1, msg.arg2);
                     setLoading(false);
                     mLoadingProgressBar.setVisibility(View.GONE);
                         break;
@@ -196,13 +213,15 @@ public class ManagerShareActivity extends Activity implements
                     String summary = paper.getElementsByClass("post_summary").text();
                     String imgSrc = paper.select(".lazy").first().attr("data-original");
                     String date = paper.select(".post_meta").text();
-                    dbg("article: " + title +
+                    String href = paper.select("h3 a").attr("href");
+                    dbg("article: " + title + " href: " + href + " # " +
                             summary +
                             " @" + imgSrc);
                     news.add(new Paper(title,
                             summary,
                             imgSrc,
-                            date));
+                            date,
+                            href));
                 }
                 if (news.size() == 0) {
                     mHandler.sendEmptyMessage(MSG_SHOW_LAST_CONTENTS_HINT);
@@ -222,20 +241,25 @@ public class ManagerShareActivity extends Activity implements
             try {
                 Document doc = getWebDocument();
                 Elements papers = doc.select(".post_list li");
+                int lastCount = mPaperAdapter.getItemCount();
                 for (Element paper: papers) {
                     String title = paper.select("h3").text();
                     String summary = paper.getElementsByClass("post_summary").text();
                     String imgSrc = paper.select(".lazy").first().attr("data-original");
                     String date = paper.select(".post_meta").text();
-                    dbg("article: " + title +
+                    String href = paper.select("h3 a").attr("href");
+                    dbg("article: " + title + " href: " + href + " # " +
                             summary +
                             " @" + imgSrc);
                     mPapers.add(new Paper(title,
                             summary,
                             imgSrc,
-                            date));
+                            date,
+                            href));
                 }
-                mHandler.sendEmptyMessage(MSG_LOAD_NEXT_PAGE_DONE);
+                Message msg = mHandler.obtainMessage(MSG_LOAD_NEXT_PAGE_DONE,
+                        lastCount, mPaperAdapter.getItemCount() - 1);
+                mHandler.sendMessage(msg);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -294,12 +318,15 @@ public class ManagerShareActivity extends Activity implements
         String mSummary;
         String mPicture;
         String mDate;
+        String mHref;
 
-        public Paper (String title, String summary, String picture, String date) {
+        public Paper (String title, String summary, String picture,
+                      String date, String href) {
             mTitle = title;
             mSummary = summary;
             mPicture = picture;
             mDate = date;
+            mHref = href;
         }
     }
 }
