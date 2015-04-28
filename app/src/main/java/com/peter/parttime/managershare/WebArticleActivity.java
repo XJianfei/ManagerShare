@@ -3,7 +3,6 @@ package com.peter.parttime.managershare;
 import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -19,7 +18,8 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
 import java.io.IOException;
-import java.io.InputStream;
+
+import peter.parttime.utils.BitmapUtil;
 
 
 public class WebArticleActivity extends Activity {
@@ -30,6 +30,7 @@ public class WebArticleActivity extends Activity {
     private String mArticleContent = "";
     private String mArticleTitle = "";
     private String mArticleLead = "";
+    private String mArticleMeta = "";
     private String mPath = "";
 
     private LruCache<String, Bitmap> mMemoryCache;
@@ -46,8 +47,11 @@ public class WebArticleActivity extends Activity {
             mArticleContentTextView.setText(R.string.invalid_url);
             return;
         }
+
         int maxMemory = (int)Runtime.getRuntime().maxMemory();
-        int mCacheSize = maxMemory / 8;
+        int mCacheSize = maxMemory / 2;
+        ManagerShareActivity.info("Web article cache size: " + mCacheSize);
+
         mMemoryCache = new LruCache<String, Bitmap>(mCacheSize) {
             @Override
             protected int sizeOf(String key, Bitmap value) {
@@ -89,7 +93,8 @@ public class WebArticleActivity extends Activity {
                                             mArticleTitle + "</strong>" +
                                             "</title></head><br/><br/>" +
                                             "<body>" +
-                                            "<font color=\"#00000000\" size=\"30\">" +
+                                            "<font color=\"#00000000\">" +
+                                            "<p><small>" + mArticleMeta + "</small></p>" +
                                             "<p>" + mArticleLead + "</p>" +
                                             mArticleContent +
                                             "</body></html>", new URLImageParser(), null));
@@ -112,6 +117,7 @@ public class WebArticleActivity extends Activity {
                 mArticleTitle = doc.select("h1").first().text();
                 mArticleContent = doc.select(".article > p").outerHtml();
                 mArticleLead = doc.select(".article .post_lead_r").first().text();
+                mArticleMeta = doc.select(".post_meta").text();
                 ManagerShareActivity.error("lead: " + mArticleLead);
                 mHandler.sendEmptyMessage(MSG_GET_WEB_CONTENT_DONE);
             } catch (IOException e) {
@@ -124,18 +130,22 @@ public class WebArticleActivity extends Activity {
     private class URLImageParser implements Html.ImageGetter {
         @Override
         public Drawable getDrawable(String source) {
-            URLDrawable urlDrawable = new URLDrawable(WebArticleActivity.this,
-                    mArticleContentTextView.getWidth(),
-                    mArticleContentTextView.getWidth());
+            URLDrawable urlDrawable = new URLDrawable(WebArticleActivity.this);
+            ManagerShareActivity.dbg("getDrawable: " + source);
+            if (mMemoryCache.get(source) != null) {
+                urlDrawable.bitmap = mMemoryCache.get(source);
+            } else {
+                AsyncImageGetter at = new AsyncImageGetter(urlDrawable);
+                Drawable drawable = WebArticleActivity.this.getDrawable(R.drawable.blank);
+                urlDrawable.setBounds(0, 0, drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight());
 
-            AsyncImageGetter at = new AsyncImageGetter(urlDrawable);
-
-            at.execute(source);
+                at.execute(source);
+            }
             return urlDrawable;
         }
     }
 
-    private class AsyncImageGetter extends AsyncTask<String, Void, Drawable> {
+    private class AsyncImageGetter extends AsyncTask<String, Void, Bitmap> {
         URLDrawable urlDrawable;
 
         public AsyncImageGetter(URLDrawable d) {
@@ -143,36 +153,40 @@ public class WebArticleActivity extends Activity {
         }
 
         @Override
-        protected void onPostExecute(Drawable drawable) {
+        protected void onPostExecute(Bitmap bitmap) {
 
-            urlDrawable.drawable = drawable;
+            urlDrawable.bitmap = bitmap;
 
-            mArticleContentTextView.invalidate();
-            //mArticleContentTextView.invalidateDrawable(urlDrawable);
-            ManagerShareActivity.dbg("invalidate.");
+            if (bitmap != null)
+                urlDrawable.setBounds(0, 0, bitmap.getWidth(), bitmap.getHeight());
+            mArticleContentTextView.setText(mArticleContentTextView.getText());
         }
 
         @Override
-        protected Drawable doInBackground(String... params) {
+        protected Bitmap doInBackground(String... params) {
             return fetchDrawable(params[0]);
         }
 
-        public Drawable fetchDrawable(String urlString) {
-            Drawable d = null;
+        public Bitmap fetchDrawable(String urlString) {
+            Bitmap b = null;
             try {
                 byte[] bitmapBytes = ManagerShareActivity.getUrlBytes(urlString);
                 final Bitmap bitmap = BitmapFactory.decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
-                d = new BitmapDrawable(bitmap);
-                mMemoryCache.put(urlString, bitmap);
+                int maxWidth = mArticleContentTextView.getWidth() - mArticleContentTextView.getPaddingLeft() - mArticleContentTextView.getPaddingRight();
+                if (bitmap.getWidth() > maxWidth) {
+                    b = BitmapUtil.scaleWithWidth(bitmap, maxWidth);
+                    bitmap.recycle();
+                } else {
+                    b = bitmap;
+                }
+                mMemoryCache.put(urlString, b);
 
-                d.setBounds(0, 0, mArticleContentTextView.getWidth(),
-                        bitmap.getHeight() * mArticleContentTextView.getWidth() / bitmap.getWidth());
             } catch (Exception e) {
                 ManagerShareActivity.error("image: " + urlString);
                 Log.e(ManagerShareActivity.TAG, "web", e);
             }
 
-            return d;
+            return b;
         }
 
 

@@ -3,24 +3,25 @@ package com.peter.parttime.managershare;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 
 public class URLDrawable extends BitmapDrawable {
-    protected Drawable drawable;
+    protected Bitmap bitmap = null;
+    private Context mContext;
+    private Drawable drawable = null;
 
-    private Rect rect;
-    public URLDrawable(Context context, int width, int height) {
-        rect = new Rect(0, 0, width, height);
-        drawable = context.getDrawable(R.drawable.p1);
-        setBounds(rect);
-        drawable.setBounds(rect);
+    public URLDrawable(Context context) {
+        mContext = context;
+        drawable = mContext.getDrawable(R.drawable.blank);
+        drawable.setBounds(0, 0, drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight());
     }
 
     @Override
     public void draw(Canvas canvas) {
-        if (drawable != null) {
+        if (bitmap != null && !bitmap.isRecycled()) {
+            canvas.drawBitmap(bitmap, 0, 0, getPaint());
+        } else {
             drawable.draw(canvas);
         }
     }

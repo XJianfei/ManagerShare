@@ -80,9 +80,14 @@ public class ThumbnailDownloader<Token> extends HandlerThread {
             return;
 
         String key = (String) ((ImageView)token).getTag();
-        byte[] bitmapBytes = ManagerShareActivity.getUrlBytes(url);
-        final Bitmap bitmap = BitmapFactory.decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
-        mMemoryCache.put(key, bitmap);
+        final Bitmap bitmap;
+        if (getCacheImage(key) != null) {
+            bitmap = getCacheImage(key);
+        } else {
+            byte[] bitmapBytes = ManagerShareActivity.getUrlBytes(url);
+            bitmap = BitmapFactory.decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
+            mMemoryCache.put(key, bitmap);
+        }
         mResponseHandler.post(new Runnable() {
             @Override
             public void run() {
