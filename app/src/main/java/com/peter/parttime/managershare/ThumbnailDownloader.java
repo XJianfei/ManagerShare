@@ -36,6 +36,15 @@ public class ThumbnailDownloader<Token> extends HandlerThread {
             protected int sizeOf(String key, Bitmap value) {
                 return value.getRowBytes() * value.getHeight();
             }
+
+            @Override
+            protected void entryRemoved(boolean evicted, String key, Bitmap oldValue, Bitmap newValue) {
+                super.entryRemoved(evicted, key, oldValue, newValue);
+                if (evicted && oldValue != null && !oldValue.isRecycled()) {
+                    oldValue.recycle();
+                    oldValue = null;
+                }
+            }
         };
 
     }
