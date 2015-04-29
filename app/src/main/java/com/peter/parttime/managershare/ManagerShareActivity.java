@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -16,6 +17,7 @@ import android.view.MenuItem;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
+import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.Toast;
@@ -76,6 +78,13 @@ public class ManagerShareActivity extends Activity implements
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
+        /*
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            Window window = getWindow();
+            window.setFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION,
+                    WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
+        }
+        */
         setContentView(R.layout.activity_manager_share);
 
         mThumbnailDownloader = new ThumbnailDownloader<ImageView>(new Handler());
@@ -144,7 +153,7 @@ public class ManagerShareActivity extends Activity implements
                     new ComponentName(ManagerShareActivity.this, WebArticleActivity.class));
             intent.putExtra(WebArticleActivity.EXTRA_URL, html + "/" + p.mHref);
             startActivity(intent);
-
+            overridePendingTransition(R.anim.activity_right_in, R.anim.activity_fade_out);
         }
     };
 

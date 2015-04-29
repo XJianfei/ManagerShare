@@ -2,4 +2,5 @@
 <resources>
     <color name="carview_font_color">#FF000000</color>
     <color name="carview_backgroud">@color/cardview_light_background</color>
+    <integer name="activity_anim_duration">300</integer>
 </resources>

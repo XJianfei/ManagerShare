@@ -5,13 +5,16 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.text.Html;
 import android.util.Log;
 import android.util.LruCache;
+import android.view.View;
 import android.view.Window;
+import android.view.WindowManager;
 import android.widget.TextView;
 
 import org.jsoup.Jsoup;
@@ -35,18 +38,39 @@ public class WebArticleActivity extends Activity {
 
     private LruCache<String, Bitmap> mMemoryCache;
 
+    private static final int SWIPE_RIGHT_DISTANCE = 300;
+    private static final int SWIPE_RIGHT_VELOCITY = 100;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            Window window = getWindow();
+            window.setFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION,
+                    WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
+        }
         setContentView(R.layout.web_article);
         mArticleContentTextView = (TextView) findViewById(R.id.content);
+        mArticleContentTextView.setFitsSystemWindows(true);
         mPath = getIntent().getStringExtra(EXTRA_URL);
         ManagerShareActivity.info("show: " + mPath);
         if (mPath == null) {
             mArticleContentTextView.setText(R.string.invalid_url);
             return;
         }
+
+        View v = findViewById(R.id.article);
+        v.setLongClickable(true);
+        v.setOnTouchListener(new SwipeGestureListener(this,
+                SWIPE_RIGHT_DISTANCE, SWIPE_RIGHT_VELOCITY) {
+            @Override
+            public boolean swipeRight() {
+                finish();
+                overridePendingTransition(R.anim.activity_left_in, R.anim.activity_right_out);
+                return super.swipeRight();
+            }
+        });
 
         int maxMemory = (int)Runtime.getRuntime().maxMemory();
         int mCacheSize = maxMemory / 2;
@@ -70,6 +94,7 @@ public class WebArticleActivity extends Activity {
 
         new Thread(mGetArticalRunnable).start();
     }
+
 
     private Document getWebDocument(String url) throws IOException {
         ManagerShareActivity.dbg("http:" + url);
