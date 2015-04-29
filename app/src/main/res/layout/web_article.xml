@@ -9,10 +9,11 @@
         android:padding="5dp"
         android:scrollbars="vertical"
         android:fadingEdge="vertical">
-        <TextView
+        <com.peter.parttime.managershare.ArticleTextView
             android:id="@+id/content"
+            android:textIsSelectable="true"
+            android:textColor="@android:color/black"
             android:textSize="@dimen/artical_content_size"
-            android:paddingBottom="6dp"
             android:layout_width="match_parent"
             android:scrollbars="vertical"
             android:layout_height="wrap_content" />

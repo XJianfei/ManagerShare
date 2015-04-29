@@ -60,15 +60,17 @@ public class WebArticleActivity extends Activity {
             return;
         }
 
-        View v = findViewById(R.id.article);
+        ArticleTextView v = (ArticleTextView) findViewById(R.id.content);
         v.setLongClickable(true);
-        v.setOnTouchListener(new SwipeGestureListener(this,
-                SWIPE_RIGHT_DISTANCE, SWIPE_RIGHT_VELOCITY) {
+        v.setOnSwipeListener(new ArticleTextView.OnSwipeListener() {
             @Override
-            public boolean swipeRight() {
+            public void onSwipeLeft() {
                 finish();
                 overridePendingTransition(R.anim.activity_left_in, R.anim.activity_right_out);
-                return super.swipeRight();
+            }
+
+            @Override
+            public void onSwipeRight() {
             }
         });
 
@@ -143,7 +145,6 @@ public class WebArticleActivity extends Activity {
                 mArticleContent = doc.select(".article > p").outerHtml();
                 mArticleLead = doc.select(".article .post_lead_r").first().text();
                 mArticleMeta = doc.select(".post_meta").text();
-                ManagerShareActivity.error("lead: " + mArticleLead);
                 mHandler.sendEmptyMessage(MSG_GET_WEB_CONTENT_DONE);
             } catch (IOException e) {
                 ManagerShareActivity.error("Can't connect to " + mPath);

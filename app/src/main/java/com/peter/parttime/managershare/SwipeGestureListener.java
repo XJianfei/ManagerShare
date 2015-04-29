@@ -27,6 +27,7 @@ public class SwipeGestureListener extends GestureDetector.SimpleOnGestureListene
     @Override
     public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX,
                            float velocityY) {
+        if (e1 == null || e2 == null) return false;
         if (e1.getX() - e2.getX() > distance
                 && Math.abs(velocityX) > velocity) {
             swipeLeft();
