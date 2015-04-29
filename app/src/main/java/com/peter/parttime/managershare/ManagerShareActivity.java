@@ -138,7 +138,7 @@ public class ManagerShareActivity extends Activity implements
             new PaperAdapter.OnItemClickListener() {
         @Override
         public void onItemClickListener(View v, Paper p) {
-            dbg("--------" + p.mHref);
+            dbg("onItemClick: " + p.mHref);
             Intent intent = new Intent();
             intent.setComponent(
                     new ComponentName(ManagerShareActivity.this, WebArticleActivity.class));
@@ -150,7 +150,6 @@ public class ManagerShareActivity extends Activity implements
 
     @Override
     public void onRefresh() {
-        dbg("refreshing: " + mSwipeLayout.isRefreshing());
         new Thread(mUpdateHomePageRunnable).start();
     }
 
@@ -214,7 +213,7 @@ public class ManagerShareActivity extends Activity implements
                     String imgSrc = paper.select(".lazy").first().attr("data-original");
                     String date = paper.select(".post_meta").text();
                     String href = paper.select("h3 a").attr("href");
-                    dbg("article: " + title + " href: " + href + " # " +
+                    dbg("Article: " + title + " href: " + href + " # " +
                             summary +
                             " @" + imgSrc);
                     news.add(new Paper(title,
@@ -248,7 +247,7 @@ public class ManagerShareActivity extends Activity implements
                     String imgSrc = paper.select(".lazy").first().attr("data-original");
                     String date = paper.select(".post_meta").text();
                     String href = paper.select("h3 a").attr("href");
-                    dbg("article: " + title + " href: " + href + " # " +
+                    dbg("Article: " + title + " href: " + href + " # " +
                             summary +
                             " @" + imgSrc);
                     mPapers.add(new Paper(title,
