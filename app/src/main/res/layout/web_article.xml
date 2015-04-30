@@ -12,6 +12,7 @@
         <com.peter.parttime.managershare.ArticleTextView
             android:id="@+id/content"
             android:textIsSelectable="true"
+            android:autoLink="all"
             android:textColor="@android:color/black"
             android:textSize="@dimen/artical_content_size"
             android:layout_width="match_parent"

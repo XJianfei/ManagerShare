@@ -106,6 +106,7 @@ public class WebArticleActivity extends Activity {
 
     private static final int MSG_GET_WEB_CONTENT_DONE = 0;
     private static final int MSG_GET_WEB_CONTENT_FAILED = 1;
+    private static final int MSG_SET_TEXT_SELECTABLE = 2;
     private Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
@@ -129,6 +130,10 @@ public class WebArticleActivity extends Activity {
                 case MSG_GET_WEB_CONTENT_FAILED:
                     mArticleContentTextView.setText(R.string.invalid_url);
                     break;
+                case MSG_SET_TEXT_SELECTABLE:
+                    mArticleContentTextView.setTextIsSelectable(true);
+                    break;
+
                 default:
                     break;
             }
@@ -185,7 +190,11 @@ public class WebArticleActivity extends Activity {
 
             if (bitmap != null)
                 urlDrawable.setBounds(0, 0, bitmap.getWidth(), bitmap.getHeight());
+            // set isSelectable false, or textview will scroll to top.
+            mArticleContentTextView.setTextIsSelectable(false);
             mArticleContentTextView.setText(mArticleContentTextView.getText());
+            mHandler.sendEmptyMessage(MSG_SET_TEXT_SELECTABLE);
+
         }
 
         @Override
