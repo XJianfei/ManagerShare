@@ -1,13 +1,19 @@
 package com.peter.parttime.managershare;
 
 import android.app.Activity;
+import android.app.ActivityManager;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.support.v4.app.NotificationCompat;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
@@ -45,6 +51,8 @@ public class ManagerShareActivity extends Activity implements
     private PaperAdapter mPaperAdapter;
     private LinearLayoutManager mLayoutManager;
     private List<Paper> mPapers = new CopyOnWriteArrayList<Paper>();
+
+    private NotificationManager mNotificationManager = null;
 
     private boolean mLoading = false;
     private ProgressBar mLoadingProgressBar = null;
@@ -141,6 +149,9 @@ public class ManagerShareActivity extends Activity implements
 
         mThumbnailDownloader.start();
         mThumbnailDownloader.getLooper();
+
+        mHandler.sendEmptyMessageDelayed(MSG_UPDATE_HOME_PAGE_REGULAR, REGULAR_UPDATE_HOME_TIME);
+        ManagerShareActivity.info("Start Manager share");
     }
 
     private PaperAdapter.OnItemClickListener mOnItemClickListener =
@@ -157,14 +168,27 @@ public class ManagerShareActivity extends Activity implements
         }
     };
 
+    private Thread mUpdateHomePageThread = null;
     @Override
     public void onRefresh() {
-        new Thread(mUpdateHomePageRunnable).start();
+        refreshHomePage(false);
     }
+
+    private void refreshHomePage(boolean bg) {
+        mUpdateHomePageRunnable.isBackground = bg;
+        if (mUpdateHomePageThread == null || !mUpdateHomePageThread.isAlive()) {
+            mUpdateHomePageThread = new Thread(mUpdateHomePageRunnable);
+        }
+        if (!mUpdateHomePageThread.isAlive())
+            mUpdateHomePageThread.start();
+    }
+    private static final int REGULAR_UPDATE_HOME_TIME = 30 * 60 * 60 * 1000;
+//    private static final int REGULAR_UPDATE_HOME_TIME =  5 * 1000;
 
     private static final int MSG_LOAD_NEXT_PAGE_DONE = 0;
     private static final int MSG_UPDATE_HOME_PAGE_DONE = 1;
     private static final int MSG_SHOW_LAST_CONTENTS_HINT = 2;
+    private static final int MSG_UPDATE_HOME_PAGE_REGULAR = 3;
 
     private Handler mHandler = new Handler() {
         @Override
@@ -184,12 +208,36 @@ public class ManagerShareActivity extends Activity implements
                             R.string.update_to_date, Toast.LENGTH_SHORT).show();;
                     mSwipeLayout.setRefreshing(false);
                     break;
+                case MSG_UPDATE_HOME_PAGE_REGULAR:
+                    ManagerShareActivity.info("update regular");
+                    refreshHomePage(true);
+                    mHandler.sendEmptyMessageDelayed(MSG_UPDATE_HOME_PAGE_REGULAR, REGULAR_UPDATE_HOME_TIME);
+                    break;
 
                 default:
                     break;
             }
         }
     };
+
+    private boolean isTopTask() {
+        final ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        List<ActivityManager.RunningAppProcessInfo> apps = am.getRunningAppProcesses();
+        return (apps.get(0).pid == android.os.Process.myPid());
+    }
+
+    private boolean mIsShowing = true;
+    @Override
+    protected void onStop() {
+        super.onStop();
+        mIsShowing = false;
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        mIsShowing = true;
+    }
 
     private int mCurrentPage = 0;
     private Document getWebDocument(int page) throws IOException {
@@ -203,14 +251,16 @@ public class ManagerShareActivity extends Activity implements
     private Document getWebDocument() throws IOException {
         return getWebDocument(mCurrentPage);
     }
-    private Runnable mUpdateHomePageRunnable = new Runnable() {
+    private class UpdateHomePageRunnable implements Runnable {
+
+        public boolean isBackground = false;
         @Override
         public void run() {
+            List<Paper> news = new CopyOnWriteArrayList<Paper>();
             try {
                 Document doc = getWebDocument(0);
                 Elements papers = doc.select(".post_list li");
-                String lastPaper = mPapers.get(0).mTitle;
-                List<Paper> news = new CopyOnWriteArrayList<Paper>();
+                String lastPaper = mPapers.isEmpty() ? "" : mPapers.get(0).mTitle;
                 for (Element paper : papers) {
                     String title = paper.select("h3").text();
                     dbg("Update: " + title + "  ?= " + lastPaper);
@@ -231,8 +281,9 @@ public class ManagerShareActivity extends Activity implements
                             date,
                             href));
                 }
-                if (news.size() == 0) {
+                if (news.isEmpty() && !isBackground) {
                     mHandler.sendEmptyMessage(MSG_SHOW_LAST_CONTENTS_HINT);
+                    isBackground = true;
                     return;
                 } else {
                     mPapers.addAll(0, news);
@@ -241,8 +292,37 @@ public class ManagerShareActivity extends Activity implements
                 e.printStackTrace();
             }
             mHandler.sendEmptyMessage(MSG_UPDATE_HOME_PAGE_DONE);
+            if (!news.isEmpty() && !isTopTask())
+                sendNewArticleNotification(news);
         }
-    };
+    }
+
+    private void sendNewArticleNotification(List<Paper> news) {
+        if (news.isEmpty()) return;
+        if (mNotificationManager == null)
+            mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(ManagerShareActivity.this);
+
+        builder.setContentTitle("" + news.get(0).mTitle)
+                .setContentText(news.get(0).mTitle)
+                .setSmallIcon(R.drawable.favicon)
+                .setTicker("" + news.get(0).mTitle)
+                .setAutoCancel(true)
+                .setNumber(news.size())
+                .setWhen(System.currentTimeMillis());
+
+        Intent intent = new Intent(ManagerShareActivity.this, ManagerShareActivity.class);
+        Intent[] is = new Intent[1];
+        is[0] = intent;
+        PendingIntent pi = PendingIntent.getActivities(ManagerShareActivity.this,
+                0, is, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        builder.setContentIntent(pi);
+        mNotificationManager.notify(0, builder.build());
+    }
+
+private UpdateHomePageRunnable mUpdateHomePageRunnable = new UpdateHomePageRunnable();
     private Runnable mGetNextPageRunnable = new Runnable() {
         @Override
         public void run() {
@@ -250,7 +330,9 @@ public class ManagerShareActivity extends Activity implements
                 Document doc = getWebDocument();
                 Elements papers = doc.select(".post_list li");
                 int lastCount = mPaperAdapter.getItemCount();
+//                int i = 3;
                 for (Element paper: papers) {
+//                    if (i-- > 0) continue;
                     String title = paper.select("h3").text();
                     String summary = paper.getElementsByClass("post_summary").text();
                     String imgSrc = paper.select(".lazy").first().attr("data-original");
