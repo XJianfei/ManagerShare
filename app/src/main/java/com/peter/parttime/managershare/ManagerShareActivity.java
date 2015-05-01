@@ -28,6 +28,7 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
+import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -182,7 +183,7 @@ public class ManagerShareActivity extends Activity implements
         if (!mUpdateHomePageThread.isAlive())
             mUpdateHomePageThread.start();
     }
-    private static final int REGULAR_UPDATE_HOME_TIME = 30 * 60 * 60 * 1000;
+    private static final int REGULAR_UPDATE_HOME_TIME = 30 * 60 * 1000;
 //    private static final int REGULAR_UPDATE_HOME_TIME =  5 * 1000;
 
     private static final int MSG_LOAD_NEXT_PAGE_DONE = 0;
@@ -240,12 +241,15 @@ public class ManagerShareActivity extends Activity implements
     }
 
     private int mCurrentPage = 0;
+    public static final String USER_AGENT = "Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.37 Safari/537.36";
     private Document getWebDocument(int page) throws IOException {
         String url = html;
         if (page != 0)
             url += "/?&page=" + page;
         dbg("http:" + url);
-        Document doc = Jsoup.connect(url).get();
+        Connection conn = Jsoup.connect(url);
+        conn.header("User-Aagent", USER_AGENT);
+        Document doc = conn.get();
         return doc;
     }
     private Document getWebDocument() throws IOException {
@@ -383,6 +387,7 @@ private UpdateHomePageRunnable mUpdateHomePageRunnable = new UpdateHomePageRunna
     public static byte[] getUrlBytes(String urlSpec) throws IOException {
         URL url = new URL(urlSpec);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.addRequestProperty("User-Agent", USER_AGENT);
         try {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             InputStream in = conn.getInputStream();

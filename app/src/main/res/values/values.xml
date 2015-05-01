@@ -2,5 +2,9 @@
 <resources>
     <color name="carview_font_color">#FF000000</color>
     <color name="carview_backgroud">@color/cardview_light_background</color>
+    <color name="article_shadow_color">#B0000000</color>
     <integer name="activity_anim_duration">300</integer>
+
+    <integer name="acticle_text_shadow_value">1</integer>
+
 </resources>

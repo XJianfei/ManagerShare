@@ -1,22 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="vertical"
+    android:padding="15dp"
     android:layout_width="match_parent" android:layout_height="match_parent">
     <ScrollView
         android:id="@+id/article"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="5dp"
         android:scrollbars="vertical"
         android:fadingEdge="vertical">
         <com.peter.parttime.managershare.ArticleTextView
+            style="@style/ArticleTextView"
             android:id="@+id/content"
-            android:textIsSelectable="true"
-            android:autoLink="all"
-            android:textColor="@android:color/black"
-            android:textSize="@dimen/artical_content_size"
             android:layout_width="match_parent"
-            android:scrollbars="vertical"
             android:layout_height="wrap_content" />
+        <!--
+        android:textIsSelectable="true"
+        android:lineSpacingMultiplier="1.2"
+        android:textScaleX="1.1"
+        android:autoLink="all"
+        android:shadowDx="@integer/acticle_text_shadow_value"
+        android:shadowDy="@integer/acticle_text_shadow_value"
+        android:shadowRadius="@integer/acticle_text_shadow_value"
+        android:shadowColor="@color/article_shadow_color"
+        android:textColor="@android:color/black"
+        android:textSize="@dimen/article_content_size"
+        android:scrollbars="vertical"
+        -->
     </ScrollView>
 </LinearLayout>

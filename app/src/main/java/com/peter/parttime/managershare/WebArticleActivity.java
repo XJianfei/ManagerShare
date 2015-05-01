@@ -12,11 +12,11 @@ import android.os.Message;
 import android.text.Html;
 import android.util.Log;
 import android.util.LruCache;
-import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.TextView;
 
+import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
@@ -99,14 +99,17 @@ public class WebArticleActivity extends Activity {
 
 
     private Document getWebDocument(String url) throws IOException {
-        ManagerShareActivity.dbg("http:" + url);
-        Document doc = Jsoup.connect(url).get();
+        Connection conn = Jsoup.connect(url);
+        conn.header("User-Aagent", ManagerShareActivity.USER_AGENT);
+        Document doc = conn.get();
         return doc;
     }
 
     private static final int MSG_GET_WEB_CONTENT_DONE = 0;
     private static final int MSG_GET_WEB_CONTENT_FAILED = 1;
     private static final int MSG_SET_TEXT_SELECTABLE = 2;
+
+    private static final int SET_TEXT_SELECTABLE_TIME = 1;
     private Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
@@ -193,7 +196,7 @@ public class WebArticleActivity extends Activity {
             // set isSelectable false, or textview will scroll to top.
             mArticleContentTextView.setTextIsSelectable(false);
             mArticleContentTextView.setText(mArticleContentTextView.getText());
-            mHandler.sendEmptyMessage(MSG_SET_TEXT_SELECTABLE);
+            mHandler.sendEmptyMessageDelayed(MSG_SET_TEXT_SELECTABLE, SET_TEXT_SELECTABLE_TIME);
 
         }
 

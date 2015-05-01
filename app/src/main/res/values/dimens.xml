@@ -7,6 +7,10 @@
     <dimen name="card_summary_size">12dp</dimen>
     <dimen name="card_date_size">10dp</dimen>
 
-    <dimen name="artical_title_size">16dp</dimen>
-    <dimen name="artical_content_size">16dp</dimen>
+    <dimen name="article_title_size">16dp</dimen>
+    <dimen name="article_content_size">16dp</dimen>
+
+    <dimen name="article_content_padding">15dp</dimen>
+
+    <!--<item name="article_text_shadow_value" format="float" type="dimen">1.5</item>-->
 </resources>
