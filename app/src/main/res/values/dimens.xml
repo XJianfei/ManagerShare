@@ -14,7 +14,8 @@
 
     <dimen name="empty_view_padding_top">200dp</dimen>
 
-    <dimen name="header_height">15dp</dimen>
+    <dimen name="header_height">16dp</dimen>
+    <dimen name="header_text_size">13dp</dimen>
 
     <!--<item name="article_text_shadow_value" format="float" type="dimen">1.5</item>-->
 </resources>

@@ -8,5 +8,6 @@
     <string name="invalid_url">Invalid URL</string>
     <string name="no_news_hint">No news! Pull down for update!</string>
 
+    <string name="no_availed_network">Network is not available!</string>
 
 </resources>

@@ -4,10 +4,14 @@ import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Bitmap;
+import android.graphics.Color;
+import android.net.ConnectivityManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -40,10 +44,14 @@ import java.net.URL;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import peter.parttime.utils.NetworkUtil;
+
 
 public class ManagerShareActivity extends Activity implements
         SwipeRefreshLayout.OnRefreshListener {
     public static final String TAG = "WebCrawler";
+
+    private static final int CONNECT_TIME_OUT = 3000;
 
     private SwipeRefreshLayout mSwipeLayout;
     private RecyclerView mRecyclerView;
@@ -52,6 +60,9 @@ public class ManagerShareActivity extends Activity implements
     private List<Paper> mPapers = new CopyOnWriteArrayList<Paper>();
 
     private NotificationManager mNotificationManager = null;
+    private ConnectivityManager mConnectivityManager = null;
+
+    private NetworkReceiver mNetworkReceiver = null;
 
     private boolean mLoading = false;
     private ProgressBar mLoadingMoreProgressBar = null;
@@ -121,6 +132,9 @@ public class ManagerShareActivity extends Activity implements
             public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
                 super.onScrolled(recyclerView, dx, dy);
                 if (isLoading()) return;
+                if (!NetworkUtil.isNetworkAvailed(mConnectivityManager)) {
+                    return;
+                }
 
                 int last = mLayoutManager.findLastVisibleItemPosition();
                 int count = mLayoutManager.getItemCount();
@@ -148,19 +162,59 @@ public class ManagerShareActivity extends Activity implements
         mSwipeLayout = (SwipeRefreshLayout) findViewById(R.id.swipe_container);
         mSwipeLayout.setOnRefreshListener(this);
 
-        refreshHomePage(false);
 
         mThumbnailDownloader.start();
         mThumbnailDownloader.getLooper();
 
         mHandler.sendEmptyMessageDelayed(MSG_UPDATE_HOME_PAGE_REGULAR, REGULAR_UPDATE_HOME_TIME);
         ManagerShareActivity.info("Start Manager share");
+
+        mConnectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (NetworkUtil.isNetworkAvailed(mConnectivityManager)) {
+            refreshHomePage(false);
+        } else {
+            mUpdatingProgressBar.setVisibility(View.GONE);
+            showHeaderHint(getString(R.string.no_availed_network), HEADER_HINT_TYPE_WARNING);
+        }
+
+        mNetworkReceiver = new NetworkReceiver();
+        IntentFilter filter = new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION);
+        registerReceiver(mNetworkReceiver, filter);
     }
 
+    private static final int HEADER_HINT_TYPE_INFO = 0;
+    private static final int HEADER_HINT_TYPE_WARNING = 1;
+    private void showHeaderHint(String msg, int type) {
+        mHeaderHintTextView.setVisibility(View.VISIBLE);
+        mHeaderHintTextView.setText(msg);
+        switch (type) {
+            case HEADER_HINT_TYPE_WARNING:
+                mHeaderHintTextView.setTextColor(Color.RED);
+                break;
+            case HEADER_HINT_TYPE_INFO:
+            default:
+                mHeaderHintTextView.setTextColor(Color.BLACK);
+                break;
+        }
+    }
+    private void hideHeaderHint() {
+        mHeaderHintTextView.setVisibility(View.GONE);
+    }
+
+    private Toast mInvalidNetworkWarningToast = null;//Toast.makeText(this, getString(R.string.no_availed_network), Toast.LENGTH_SHORT);
+    private void showInvalidNetworkWarning() {
+        if (mInvalidNetworkWarningToast == null)
+            mInvalidNetworkWarningToast = Toast.makeText(this, getString(R.string.no_availed_network), Toast.LENGTH_SHORT);
+        mInvalidNetworkWarningToast.show();
+    }
     private PaperAdapter.OnItemClickListener mOnItemClickListener =
             new PaperAdapter.OnItemClickListener() {
         @Override
         public void onItemClickListener(View v, Paper p) {
+            if (!NetworkUtil.isNetworkAvailed(mConnectivityManager)) {
+                showInvalidNetworkWarning();
+                return;
+            }
             Intent intent = new Intent();
             intent.setComponent(
                     new ComponentName(ManagerShareActivity.this, WebArticleActivity.class));
@@ -173,6 +227,10 @@ public class ManagerShareActivity extends Activity implements
     private Thread mUpdateHomePageThread = null;
     @Override
     public void onRefresh() {
+        if (!NetworkUtil.isNetworkAvailed(mConnectivityManager)) {
+            showInvalidNetworkWarning();
+            mSwipeLayout.setRefreshing(false);
+        }
         refreshHomePage(false);
     }
 
@@ -199,11 +257,17 @@ public class ManagerShareActivity extends Activity implements
     private static final int MSG_UPDATE_HOME_PAGE_DONE = 1;
     private static final int MSG_SHOW_LAST_CONTENTS_HINT = 2;
     private static final int MSG_UPDATE_HOME_PAGE_REGULAR = 3;
+    private static final int MSG_CONNECT_TIME_OUT = 4;
 
     private Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
             switch (msg.what) {
+                case MSG_CONNECT_TIME_OUT:
+                    mUpdatingProgressBar.setVisibility(View.GONE);
+                    mLoadingMoreProgressBar.setVisibility(View.GONE);
+                    mSwipeLayout.setRefreshing(false);
+                    break;
                 case MSG_LOAD_NEXT_PAGE_DONE:
                     mPaperAdapter.notifyItemRangeInserted(msg.arg1, msg.arg2);
                     setLoading(false);
@@ -260,6 +324,7 @@ public class ManagerShareActivity extends Activity implements
         dbg("http:" + url);
         Connection conn = Jsoup.connect(url);
         conn.header("User-Aagent", USER_AGENT);
+        conn.timeout(CONNECT_TIME_OUT);
         Document doc = conn.get();
         return doc;
     }
@@ -305,6 +370,8 @@ public class ManagerShareActivity extends Activity implements
                 }
             } catch (IOException e) {
                 e.printStackTrace();
+                error("connect time out");
+                mHandler.sendEmptyMessage(MSG_CONNECT_TIME_OUT);
             }
             if (!news.isEmpty() && !isTopTask())
                 sendNewArticleNotification(news);
@@ -363,8 +430,8 @@ public class ManagerShareActivity extends Activity implements
             }
             try {
                 Document doc = getWebDocument();
-                Elements papers = doc.select(".post_list li");
                 List<Paper> news = new CopyOnWriteArrayList<Paper>();
+                Elements papers = doc.select(".post_list li");
 //                int i = 3;
                 for (Element paper: papers) {
 //                    if (i-- > 0) continue;
@@ -385,10 +452,36 @@ public class ManagerShareActivity extends Activity implements
                 addAllNews(news);
             } catch (IOException e) {
                 e.printStackTrace();
+                error("connect time out");
+                mHandler.sendEmptyMessage(MSG_CONNECT_TIME_OUT);
             }
 
         }
     };
+
+    private class NetworkReceiver extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            final String action = intent.getAction();
+            if (action.equals(ConnectivityManager.CONNECTIVITY_ACTION)) {
+                if (intent.getBooleanExtra(ConnectivityManager.EXTRA_NO_CONNECTIVITY, false) == false) {
+                    hideHeaderHint();
+                    if (mPapers.isEmpty())
+                        refreshHomePage(false);
+                } else {
+                    showHeaderHint(getString(R.string.no_availed_network), HEADER_HINT_TYPE_WARNING);
+                }
+            }
+            /*
+            ManagerShareActivity.dbg("net work state change: " + action);
+            ManagerShareActivity.dbg("no connectivity:" + intent.getBooleanExtra(ConnectivityManager.EXTRA_NO_CONNECTIVITY, false));
+            ManagerShareActivity.dbg("info:" + intent.getStringExtra(ConnectivityManager.EXTRA_EXTRA_INFO));
+            ManagerShareActivity.dbg("network info:" + intent.getParcelableExtra(ConnectivityManager.EXTRA_NETWORK_TYPE));
+            ManagerShareActivity.dbg("reason:" + intent.getStringExtra(ConnectivityManager.EXTRA_REASON));
+            */
+        }
+    }
 
 
     @Override
@@ -454,4 +547,5 @@ public class ManagerShareActivity extends Activity implements
             mHref = href;
         }
     }
+
 }
