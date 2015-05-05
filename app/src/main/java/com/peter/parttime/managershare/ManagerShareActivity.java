@@ -317,6 +317,33 @@ public class ManagerShareActivity extends Activity implements
 
     private int mCurrentPage = 0;
     public static final String USER_AGENT = "Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.37 Safari/537.36";
+
+//    private int reservePaperCount = 3;
+    private List<Paper> parseDocument(Document doc, String lastPaper) {
+        List<Paper> news = new CopyOnWriteArrayList<Paper>();
+        Elements papers = doc.select(".post_list li");
+        for (Element paper: papers) {
+//            if (reservePaperCount-- > 0) continue;
+
+            String href = paper.select("h3 a").attr("href");
+            if (href.equals(lastPaper))
+                break;
+
+            String title = paper.select("h3").text();
+            String summary = paper.getElementsByClass("post_summary").text();
+            String imgSrc = paper.select(".lazy").first().attr("data-original");
+            String date = paper.select(".post_meta").text();
+            dbg("Article: " + title + " href: " + href + " # " +
+                    summary +
+                    " @" + imgSrc);
+            news.add(new Paper(title,
+                    summary,
+                    imgSrc,
+                    date,
+                    href));
+        }
+        return news;
+    }
     private Document getWebDocument(int page) throws IOException {
         String url = html;
         if (page != 0)
@@ -330,52 +357,6 @@ public class ManagerShareActivity extends Activity implements
     }
     private Document getWebDocument() throws IOException {
         return getWebDocument(mCurrentPage);
-    }
-    private class UpdateHomePageRunnable implements Runnable {
-
-        public boolean isBackground = false;
-        @Override
-        public void run() {
-            List<Paper> news = new CopyOnWriteArrayList<Paper>();
-            try {
-                Document doc = getWebDocument(0);
-                Elements papers = doc.select(".post_list li");
-                String lastPaper = mPapers.isEmpty() ? "" : mPapers.get(0).mTitle;
-                for (Element paper : papers) {
-                    String title = paper.select("h3").text();
-                    dbg("Update: " + title + "  ?= " + lastPaper);
-                    if (lastPaper.equals(title)) {
-                        break;
-                    }
-
-                    String summary = paper.getElementsByClass("post_summary").text();
-                    String imgSrc = paper.select(".lazy").first().attr("data-original");
-                    String date = paper.select(".post_meta").text();
-                    String href = paper.select("h3 a").attr("href");
-                    dbg("Article: " + title + " href: " + href + " # " +
-                            summary +
-                            " @" + imgSrc);
-                    news.add(new Paper(title,
-                            summary,
-                            imgSrc,
-                            date,
-                            href));
-                }
-                if (news.isEmpty() && !isBackground) {
-                    mHandler.sendEmptyMessage(MSG_SHOW_LAST_CONTENTS_HINT);
-                    isBackground = true;
-                    return;
-                } else {
-                    addAllNews(0, news);
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-                error("connect time out");
-                mHandler.sendEmptyMessage(MSG_CONNECT_TIME_OUT);
-            }
-            if (!news.isEmpty() && !isTopTask())
-                sendNewArticleNotification(news);
-        }
     }
 
     private void addAllNews(int position, List<Paper> news) {
@@ -419,6 +400,33 @@ public class ManagerShareActivity extends Activity implements
     }
 
     private UpdateHomePageRunnable mUpdateHomePageRunnable = new UpdateHomePageRunnable();
+    private class UpdateHomePageRunnable implements Runnable {
+
+        public boolean isBackground = false;
+        @Override
+        public void run() {
+            List<Paper> news = new CopyOnWriteArrayList<Paper>();
+            try {
+                Document doc = getWebDocument(0);
+                String lastPaper = mPapers.isEmpty() ? "" : mPapers.get(0).mTitle;
+                news = parseDocument(doc, lastPaper);
+                if (news.isEmpty() && !isBackground) {
+                    mHandler.sendEmptyMessage(MSG_SHOW_LAST_CONTENTS_HINT);
+                    isBackground = true;
+                    return;
+                } else {
+                    addAllNews(0, news);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+                error("connect time out");
+                mHandler.sendEmptyMessage(MSG_CONNECT_TIME_OUT);
+            }
+            if (!news.isEmpty() && !isTopTask())
+                sendNewArticleNotification(news);
+        }
+    }
+
     private Runnable mGetNextPageRunnable = new Runnable() {
         public boolean TEST_EMPTY_VIEW = false;
         @Override
@@ -430,25 +438,7 @@ public class ManagerShareActivity extends Activity implements
             }
             try {
                 Document doc = getWebDocument();
-                List<Paper> news = new CopyOnWriteArrayList<Paper>();
-                Elements papers = doc.select(".post_list li");
-//                int i = 3;
-                for (Element paper: papers) {
-//                    if (i-- > 0) continue;
-                    String title = paper.select("h3").text();
-                    String summary = paper.getElementsByClass("post_summary").text();
-                    String imgSrc = paper.select(".lazy").first().attr("data-original");
-                    String date = paper.select(".post_meta").text();
-                    String href = paper.select("h3 a").attr("href");
-                    dbg("Article: " + title + " href: " + href + " # " +
-                            summary +
-                            " @" + imgSrc);
-                    news.add(new Paper(title,
-                            summary,
-                            imgSrc,
-                            date,
-                            href));
-                }
+                List<Paper> news = parseDocument(doc, "fuck");
                 addAllNews(news);
             } catch (IOException e) {
                 e.printStackTrace();
