@@ -2,14 +2,12 @@ package com.peter.parttime.managershare;
 
 import android.app.Activity;
 import android.app.ActivityManager;
-import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -23,7 +21,6 @@ import android.view.MenuItem;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
-import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.Toast;
@@ -131,7 +128,7 @@ public class ManagerShareActivity extends Activity implements
                     mCurrentPage++;
                     mLoadingProgressBar.setVisibility(View.VISIBLE);
 
-                    new Thread(mGetNextPageRunnable).start();
+                    startGetNextPage();
                 }
             }
         });
@@ -146,7 +143,7 @@ public class ManagerShareActivity extends Activity implements
         mSwipeLayout = (SwipeRefreshLayout) findViewById(R.id.swipe_container);
         mSwipeLayout.setOnRefreshListener(this);
 
-        new Thread(mGetNextPageRunnable).start();
+        startGetNextPage();
 
         mThumbnailDownloader.start();
         mThumbnailDownloader.getLooper();
@@ -175,6 +172,14 @@ public class ManagerShareActivity extends Activity implements
         refreshHomePage(false);
     }
 
+    private Thread mGetNextPageThread = null;
+    private void startGetNextPage() {
+        if (mGetNextPageThread == null || !mGetNextPageThread.isAlive()) {
+            mGetNextPageThread = new Thread(mGetNextPageRunnable);
+        }
+        if (!mGetNextPageThread.isAlive())
+            mGetNextPageThread.start();
+    }
     private void refreshHomePage(boolean bg) {
         mUpdateHomePageRunnable.isBackground = bg;
         if (mUpdateHomePageThread == null || !mUpdateHomePageThread.isAlive()) {
@@ -290,15 +295,29 @@ public class ManagerShareActivity extends Activity implements
                     isBackground = true;
                     return;
                 } else {
-                    mPapers.addAll(0, news);
+                    addAllNews(0, news);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            mHandler.sendEmptyMessage(MSG_UPDATE_HOME_PAGE_DONE);
             if (!news.isEmpty() && !isTopTask())
                 sendNewArticleNotification(news);
         }
+    }
+
+    private void addAllNews(int position, List<Paper> news) {
+        synchronized (mPapers) {
+            mPapers.addAll(position, news);
+        }
+        mHandler.sendEmptyMessage(MSG_UPDATE_HOME_PAGE_DONE);
+    }
+    private void addAllNews(List<Paper> news) {
+        synchronized (mPapers) {
+            mPapers.addAll(news);
+        }
+        Message msg = mHandler.obtainMessage(MSG_LOAD_NEXT_PAGE_DONE,
+                mPaperAdapter.getItemCount() - news.size(), mPaperAdapter.getItemCount() - 1);
+        mHandler.sendMessage(msg);
     }
 
     private void sendNewArticleNotification(List<Paper> news) {
@@ -326,14 +345,14 @@ public class ManagerShareActivity extends Activity implements
         mNotificationManager.notify(0, builder.build());
     }
 
-private UpdateHomePageRunnable mUpdateHomePageRunnable = new UpdateHomePageRunnable();
+    private UpdateHomePageRunnable mUpdateHomePageRunnable = new UpdateHomePageRunnable();
     private Runnable mGetNextPageRunnable = new Runnable() {
         @Override
         public void run() {
             try {
                 Document doc = getWebDocument();
                 Elements papers = doc.select(".post_list li");
-                int lastCount = mPaperAdapter.getItemCount();
+                List<Paper> news = new CopyOnWriteArrayList<Paper>();
 //                int i = 3;
                 for (Element paper: papers) {
 //                    if (i-- > 0) continue;
@@ -345,15 +364,13 @@ private UpdateHomePageRunnable mUpdateHomePageRunnable = new UpdateHomePageRunna
                     dbg("Article: " + title + " href: " + href + " # " +
                             summary +
                             " @" + imgSrc);
-                    mPapers.add(new Paper(title,
+                    news.add(new Paper(title,
                             summary,
                             imgSrc,
                             date,
                             href));
                 }
-                Message msg = mHandler.obtainMessage(MSG_LOAD_NEXT_PAGE_DONE,
-                        lastCount, mPaperAdapter.getItemCount() - 1);
-                mHandler.sendMessage(msg);
+                addAllNews(news);
             } catch (IOException e) {
                 e.printStackTrace();
             }
