@@ -23,6 +23,7 @@ import android.view.View;
 import android.view.Window;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import org.jsoup.Connection;
@@ -53,7 +54,9 @@ public class ManagerShareActivity extends Activity implements
     private NotificationManager mNotificationManager = null;
 
     private boolean mLoading = false;
-    private ProgressBar mLoadingProgressBar = null;
+    private ProgressBar mLoadingMoreProgressBar = null;
+    private ProgressBar mUpdatingProgressBar = null;
+    private TextView mHeaderHintTextView = null;
 
     public boolean isLoading() { return mLoading;}
     private void setLoading(boolean l) { mLoading = l;}
@@ -126,7 +129,7 @@ public class ManagerShareActivity extends Activity implements
                     dbg("Loading more");
                     setLoading(true);
                     mCurrentPage++;
-                    mLoadingProgressBar.setVisibility(View.VISIBLE);
+                    mLoadingMoreProgressBar.setVisibility(View.VISIBLE);
 
                     startGetNextPage();
                 }
@@ -138,12 +141,14 @@ public class ManagerShareActivity extends Activity implements
         mRecyclerView.setScrollBarSize(30);
         mRecyclerView.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
 
-        mLoadingProgressBar = (ProgressBar) findViewById(R.id.loadingprogressbar);
+        mLoadingMoreProgressBar = (ProgressBar) findViewById(R.id.loadingprogressbar);
+        mUpdatingProgressBar = (ProgressBar) findViewById(R.id.updatingprogressbar);
+        mHeaderHintTextView = (TextView) findViewById(R.id.header_hint);
 
         mSwipeLayout = (SwipeRefreshLayout) findViewById(R.id.swipe_container);
         mSwipeLayout.setOnRefreshListener(this);
 
-        startGetNextPage();
+        refreshHomePage(false);
 
         mThumbnailDownloader.start();
         mThumbnailDownloader.getLooper();
@@ -156,7 +161,6 @@ public class ManagerShareActivity extends Activity implements
             new PaperAdapter.OnItemClickListener() {
         @Override
         public void onItemClickListener(View v, Paper p) {
-            dbg("onItemClick: " + p.mHref);
             Intent intent = new Intent();
             intent.setComponent(
                     new ComponentName(ManagerShareActivity.this, WebArticleActivity.class));
@@ -203,11 +207,13 @@ public class ManagerShareActivity extends Activity implements
                 case MSG_LOAD_NEXT_PAGE_DONE:
                     mPaperAdapter.notifyItemRangeInserted(msg.arg1, msg.arg2);
                     setLoading(false);
-                    mLoadingProgressBar.setVisibility(View.GONE);
+                    mLoadingMoreProgressBar.setVisibility(View.GONE);
+                    mUpdatingProgressBar.setVisibility(View.GONE);
                         break;
                 case MSG_UPDATE_HOME_PAGE_DONE:
                     mPaperAdapter.notifyDataSetChanged();
                     mSwipeLayout.setRefreshing(false);
+                    mUpdatingProgressBar.setVisibility(View.GONE);
                     break;
                 case MSG_SHOW_LAST_CONTENTS_HINT:
                     Toast.makeText(ManagerShareActivity.this,
@@ -347,8 +353,14 @@ public class ManagerShareActivity extends Activity implements
 
     private UpdateHomePageRunnable mUpdateHomePageRunnable = new UpdateHomePageRunnable();
     private Runnable mGetNextPageRunnable = new Runnable() {
+        public boolean TEST_EMPTY_VIEW = false;
         @Override
         public void run() {
+            if (TEST_EMPTY_VIEW) {
+                TEST_EMPTY_VIEW = false;
+                mHandler.sendEmptyMessage(MSG_UPDATE_HOME_PAGE_DONE);
+                return;
+            }
             try {
                 Document doc = getWebDocument();
                 Elements papers = doc.select(".post_list li");
@@ -377,6 +389,7 @@ public class ManagerShareActivity extends Activity implements
 
         }
     };
+
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {

@@ -6,4 +6,7 @@
     <string name="update_to_date">Update to date</string>
 
     <string name="invalid_url">Invalid URL</string>
+    <string name="no_news_hint">No news! Pull down for update!</string>
+
+
 </resources>
