@@ -48,6 +48,8 @@ public class WebArticleActivity extends Activity {
     private static final int SWIPE_RIGHT_DISTANCE = 300;
     private static final int SWIPE_RIGHT_VELOCITY = 100;
 
+    private static final int MAX_ARTICLE_CACHE_COUNT = 200;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -185,13 +187,29 @@ public class WebArticleActivity extends Activity {
         // from internet
         Document doc = getWebDocument(url);
         article = new Article();
-        ManagerShareActivity.dbg("___article:" + article);
         article.title = doc.select("h1").first().text();
         article.content = doc.select(".article > p").outerHtml();
         article.lead = doc.select(".article .post_lead_r").first().text();
         article.meta = doc.select(".post_meta").text();
         article.path = url;
         if (cache != null) {
+            File dir = new File(cache).getParentFile();
+            File[] files = dir.listFiles();
+            long oldest = Long.MAX_VALUE;
+            long time;
+            File old = null;
+            if (files.length >= MAX_ARTICLE_CACHE_COUNT) {
+                for (File file : files) {
+                    time = file.lastModified();
+                    if (oldest > time) {
+                        oldest = time;
+                        old = file;
+                    }
+                }
+                if (old != null) {
+                    old.delete();
+                }
+            }
             MiscUtil.storeSerializable(article, cache);
         }
         return article;

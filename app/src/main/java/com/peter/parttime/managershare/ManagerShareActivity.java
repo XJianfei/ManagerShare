@@ -174,6 +174,7 @@ public class ManagerShareActivity extends Activity implements
         mThumbnailDownloader.getLooper();
 
         mHandler = new UIHandler(this);
+        mHandler.removeMessages(MSG_UPDATE_HOME_PAGE_REGULAR);
         mHandler.sendEmptyMessageDelayed(MSG_UPDATE_HOME_PAGE_REGULAR, REGULAR_UPDATE_HOME_TIME);
         ManagerShareActivity.info("Start Manager share");
 
@@ -299,6 +300,7 @@ public class ManagerShareActivity extends Activity implements
                    case MSG_UPDATE_HOME_PAGE_REGULAR:
                        ManagerShareActivity.info("update regular");
                        a.refreshHomePage(true);
+                       mHandler.removeMessages(MSG_UPDATE_HOME_PAGE_REGULAR);
                        a.mHandler.sendEmptyMessageDelayed(MSG_UPDATE_HOME_PAGE_REGULAR, REGULAR_UPDATE_HOME_TIME);
                        break;
 
