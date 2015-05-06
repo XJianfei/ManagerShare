@@ -13,6 +13,7 @@ import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.net.ConnectivityManager;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v4.app.NotificationCompat;
@@ -51,7 +52,12 @@ import peter.parttime.utils.NetworkUtil;
 public class ManagerShareActivity extends Activity implements
         SwipeRefreshLayout.OnRefreshListener {
     public static final String TAG = "WebCrawler";
+    public static final String APP_NAME = "panda_crawler";
 
+    public static final String getWebCacheDir() {
+        String dir = Environment.getExternalStorageDirectory().getAbsolutePath();
+        return dir + "/" + APP_NAME + "/article/";
+    }
     private static final int CONNECT_TIME_OUT = 3000;
 
     private SwipeRefreshLayout mSwipeLayout;
@@ -213,10 +219,6 @@ public class ManagerShareActivity extends Activity implements
             new PaperAdapter.OnItemClickListener() {
         @Override
         public void onItemClickListener(View v, Paper p) {
-            if (!NetworkUtil.isNetworkAvailed(mConnectivityManager)) {
-                showInvalidNetworkWarning();
-                return;
-            }
             Intent intent = new Intent();
             intent.setComponent(
                     new ComponentName(ManagerShareActivity.this, WebArticleActivity.class));

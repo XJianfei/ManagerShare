@@ -20,10 +20,13 @@ import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
+import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.lang.ref.WeakReference;
 
 import peter.parttime.utils.BitmapUtil;
+import peter.parttime.utils.MiscUtil;
 
 
 public class WebArticleActivity extends Activity {
@@ -31,10 +34,13 @@ public class WebArticleActivity extends Activity {
     public static final String EXTRA_URL = "extra_url";
 
     private TextView mArticleContentTextView = null;
+    private Article mArticle;
+    /*
     private String mArticleContent = "";
     private String mArticleTitle = "";
     private String mArticleLead = "";
     private String mArticleMeta = "";
+    */
     private String mPath = "";
 
     private LruCache<String, Bitmap> mMemoryCache;
@@ -63,9 +69,8 @@ public class WebArticleActivity extends Activity {
 
         mHandler = new UIHandler(this);
 
-        ArticleTextView v = (ArticleTextView) findViewById(R.id.content);
-        v.setLongClickable(true);
-        v.setOnSwipeListener(new ArticleTextView.OnSwipeListener() {
+        ArticleScrollView v = (ArticleScrollView) findViewById(R.id.article);
+        v.setOnSwipeListener(new ArticleScrollView.OnSwipeListener() {
             @Override
             public void onSwipeLeft() {
                 finish();
@@ -100,6 +105,11 @@ public class WebArticleActivity extends Activity {
         new Thread(mGetArticalRunnable).start();
     }
 
+    private String getDocumentCacheName(String url) {
+        String cache = MiscUtil.toMD5(url);
+        return cache;
+    }
+
 
     private Document getWebDocument(String url) throws IOException {
         Connection conn = Jsoup.connect(url);
@@ -130,17 +140,17 @@ public class WebArticleActivity extends Activity {
                                     "<html><head>" +
                                             "<title >" +
                                             "<strong><font color=\"#00000000\" >" +
-                                            a.mArticleTitle + "</strong>" +
+                                            a.mArticle.title + "</strong>" +
                                             "</title></head><br/><br/>" +
                                             "<body>" +
                                             "<font color=\"#00000000\">" +
-                                            "<p><small>" + a.mArticleMeta + "</small></p>" +
-                                            "<p>" + a.mArticleLead + "</p>" +
-                                            a.mArticleContent +
+                                            "<p><small>" + a.mArticle.meta + "</small></p>" +
+                                            "<p>" + a.mArticle.lead + "</p>" +
+                                            a.mArticle.content +
                                             "</body></html>", new URLImageParser(a), null));
                     break;
                 case MSG_GET_WEB_CONTENT_FAILED:
-                    a.mArticleContentTextView.setText(R.string.invalid_url);
+                    a.mArticleContentTextView.setText(R.string.no_availed_network);
                     break;
                 case MSG_SET_TEXT_SELECTABLE:
                     a.mArticleContentTextView.setTextIsSelectable(true);
@@ -155,15 +165,43 @@ public class WebArticleActivity extends Activity {
     }
     private Handler mHandler;
 
+    private Article obtainArticle(String url) throws IOException {
+        Article article;
+        // from local
+        String cache = MiscUtil.toMD5(url);
+        ManagerShareActivity.dbg("url: " + url + " cache:" + cache);
+        cache = ManagerShareActivity.getWebCacheDir() + cache;
+        if (cache != null) {
+            try {
+                article = (Article) MiscUtil.restoreSerializable(cache);
+                if (article != null) return article;
+                // if is null, then delete it
+                new File(cache).delete();
+            } catch (ClassCastException e) {
+                ManagerShareActivity.error("obtain article from local error");
+            }
+        }
+
+        // from internet
+        Document doc = getWebDocument(url);
+        article = new Article();
+        ManagerShareActivity.dbg("___article:" + article);
+        article.title = doc.select("h1").first().text();
+        article.content = doc.select(".article > p").outerHtml();
+        article.lead = doc.select(".article .post_lead_r").first().text();
+        article.meta = doc.select(".post_meta").text();
+        article.path = url;
+        if (cache != null) {
+            MiscUtil.storeSerializable(article, cache);
+        }
+        return article;
+    }
+
     private Runnable mGetArticalRunnable = new Runnable() {
         @Override
         public void run() {
             try {
-                Document doc = getWebDocument(mPath);
-                mArticleTitle = doc.select("h1").first().text();
-                mArticleContent = doc.select(".article > p").outerHtml();
-                mArticleLead = doc.select(".article .post_lead_r").first().text();
-                mArticleMeta = doc.select(".post_meta").text();
+                mArticle = obtainArticle(mPath);
                 mHandler.sendEmptyMessage(MSG_GET_WEB_CONTENT_DONE);
             } catch (IOException e) {
                 ManagerShareActivity.error("Can't connect to " + mPath);

@@ -4,29 +4,16 @@
     android:paddingStart="15dp"
     android:paddingEnd="15dp"
     android:layout_width="match_parent" android:layout_height="match_parent">
-    <ScrollView
+    <com.peter.parttime.managershare.ArticleScrollView
         android:id="@+id/article"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:scrollbars="vertical"
         android:fadingEdge="vertical">
-        <com.peter.parttime.managershare.ArticleTextView
+        <TextView
             style="@style/ArticleTextView"
             android:id="@+id/content"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
-        <!--
-        android:textIsSelectable="true"
-        android:lineSpacingMultiplier="1.2"
-        android:textScaleX="1.1"
-        android:autoLink="all"
-        android:shadowDx="@integer/acticle_text_shadow_value"
-        android:shadowDy="@integer/acticle_text_shadow_value"
-        android:shadowRadius="@integer/acticle_text_shadow_value"
-        android:shadowColor="@color/article_shadow_color"
-        android:textColor="@android:color/black"
-        android:textSize="@dimen/article_content_size"
-        android:scrollbars="vertical"
-        -->
-    </ScrollView>
+            android:layout_height="match_parent" />
+    </com.peter.parttime.managershare.ArticleScrollView>
 </LinearLayout>
