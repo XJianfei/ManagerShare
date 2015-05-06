@@ -21,6 +21,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 
 import peter.parttime.utils.BitmapUtil;
 
@@ -59,6 +60,8 @@ public class WebArticleActivity extends Activity {
             mArticleContentTextView.setText(R.string.invalid_url);
             return;
         }
+
+        mHandler = new UIHandler(this);
 
         ArticleTextView v = (ArticleTextView) findViewById(R.id.content);
         v.setLongClickable(true);
@@ -110,31 +113,37 @@ public class WebArticleActivity extends Activity {
     private static final int MSG_SET_TEXT_SELECTABLE = 2;
 
     private static final int SET_TEXT_SELECTABLE_TIME = 1;
-    private Handler mHandler = new Handler() {
+    private class UIHandler extends Handler {
+        private WeakReference<WebArticleActivity> activity;
+        public UIHandler(WebArticleActivity activity) {
+            this.activity = new WeakReference<WebArticleActivity>(activity);
+        }
         @Override
         public void handleMessage(Message msg) {
+            WebArticleActivity a = activity.get();
+            if (a == null) return;
             switch (msg.what) {
                 case MSG_GET_WEB_CONTENT_DONE:
                     //mArticleContentTextView.setMovementMethod(ScrollingMovementMethod.getInstance());
-                    mArticleContentTextView.setText(
+                    a.mArticleContentTextView.setText(
                             Html.fromHtml(
                                     "<html><head>" +
                                             "<title >" +
                                             "<strong><font color=\"#00000000\" >" +
-                                            mArticleTitle + "</strong>" +
+                                            a.mArticleTitle + "</strong>" +
                                             "</title></head><br/><br/>" +
                                             "<body>" +
                                             "<font color=\"#00000000\">" +
-                                            "<p><small>" + mArticleMeta + "</small></p>" +
-                                            "<p>" + mArticleLead + "</p>" +
-                                            mArticleContent +
-                                            "</body></html>", new URLImageParser(), null));
+                                            "<p><small>" + a.mArticleMeta + "</small></p>" +
+                                            "<p>" + a.mArticleLead + "</p>" +
+                                            a.mArticleContent +
+                                            "</body></html>", new URLImageParser(a), null));
                     break;
                 case MSG_GET_WEB_CONTENT_FAILED:
-                    mArticleContentTextView.setText(R.string.invalid_url);
+                    a.mArticleContentTextView.setText(R.string.invalid_url);
                     break;
                 case MSG_SET_TEXT_SELECTABLE:
-                    mArticleContentTextView.setTextIsSelectable(true);
+                    a.mArticleContentTextView.setTextIsSelectable(true);
                     break;
 
                 default:
@@ -142,7 +151,9 @@ public class WebArticleActivity extends Activity {
             }
             super.handleMessage(msg);
         }
-    };
+
+    }
+    private Handler mHandler;
 
     private Runnable mGetArticalRunnable = new Runnable() {
         @Override
@@ -162,15 +173,19 @@ public class WebArticleActivity extends Activity {
     };
 
     private class URLImageParser implements Html.ImageGetter {
+        private WebArticleActivity activity;
+        public URLImageParser(WebArticleActivity activity) {
+            this.activity = activity;
+        }
         @Override
         public Drawable getDrawable(String source) {
-            URLDrawable urlDrawable = new URLDrawable(WebArticleActivity.this);
+            URLDrawable urlDrawable = new URLDrawable(activity);
             ManagerShareActivity.dbg("getDrawable: " + source);
-            if (mMemoryCache.get(source) != null) {
-                urlDrawable.bitmap = mMemoryCache.get(source);
+            if (activity.mMemoryCache.get(source) != null) {
+                urlDrawable.bitmap = activity.mMemoryCache.get(source);
             } else {
                 AsyncImageGetter at = new AsyncImageGetter(urlDrawable);
-                Drawable drawable = WebArticleActivity.this.getDrawable(R.drawable.blank);
+                Drawable drawable = activity.getDrawable(R.drawable.blank);
                 urlDrawable.setBounds(0, 0, drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight());
 
                 at.execute(source);

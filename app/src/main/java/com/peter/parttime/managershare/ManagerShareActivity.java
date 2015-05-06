@@ -39,6 +39,7 @@ import org.jsoup.select.Elements;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.ref.WeakReference;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
@@ -166,6 +167,7 @@ public class ManagerShareActivity extends Activity implements
         mThumbnailDownloader.start();
         mThumbnailDownloader.getLooper();
 
+        mHandler = new UIHandler(this);
         mHandler.sendEmptyMessageDelayed(MSG_UPDATE_HOME_PAGE_REGULAR, REGULAR_UPDATE_HOME_TIME);
         ManagerShareActivity.info("Start Manager share");
 
@@ -259,42 +261,53 @@ public class ManagerShareActivity extends Activity implements
     private static final int MSG_UPDATE_HOME_PAGE_REGULAR = 3;
     private static final int MSG_CONNECT_TIME_OUT = 4;
 
-    private Handler mHandler = new Handler() {
-        @Override
-        public void handleMessage(Message msg) {
-            switch (msg.what) {
-                case MSG_CONNECT_TIME_OUT:
-                    mUpdatingProgressBar.setVisibility(View.GONE);
-                    mLoadingMoreProgressBar.setVisibility(View.GONE);
-                    mSwipeLayout.setRefreshing(false);
-                    break;
-                case MSG_LOAD_NEXT_PAGE_DONE:
-                    mPaperAdapter.notifyItemRangeInserted(msg.arg1, msg.arg2);
-                    setLoading(false);
-                    mLoadingMoreProgressBar.setVisibility(View.GONE);
-                    mUpdatingProgressBar.setVisibility(View.GONE);
-                        break;
-                case MSG_UPDATE_HOME_PAGE_DONE:
-                    mPaperAdapter.notifyDataSetChanged();
-                    mSwipeLayout.setRefreshing(false);
-                    mUpdatingProgressBar.setVisibility(View.GONE);
-                    break;
-                case MSG_SHOW_LAST_CONTENTS_HINT:
-                    Toast.makeText(ManagerShareActivity.this,
-                            R.string.update_to_date, Toast.LENGTH_SHORT).show();;
-                    mSwipeLayout.setRefreshing(false);
-                    break;
-                case MSG_UPDATE_HOME_PAGE_REGULAR:
-                    ManagerShareActivity.info("update regular");
-                    refreshHomePage(true);
-                    mHandler.sendEmptyMessageDelayed(MSG_UPDATE_HOME_PAGE_REGULAR, REGULAR_UPDATE_HOME_TIME);
-                    break;
+   private static class UIHandler extends Handler {
+       private final WeakReference<ManagerShareActivity> activity;
 
-                default:
-                    break;
-            }
-        }
-    };
+       public UIHandler(ManagerShareActivity activity) {
+           this.activity = new WeakReference<ManagerShareActivity>(activity);
+       }
+
+       @Override
+       public void handleMessage(Message msg) {
+           ManagerShareActivity a = activity.get();
+           if (a != null) {
+               switch (msg.what) {
+                   case MSG_CONNECT_TIME_OUT:
+                       a.mUpdatingProgressBar.setVisibility(View.GONE);
+                       a.mLoadingMoreProgressBar.setVisibility(View.GONE);
+                       a.mSwipeLayout.setRefreshing(false);
+                       break;
+                   case MSG_LOAD_NEXT_PAGE_DONE:
+                       a.mPaperAdapter.notifyItemRangeInserted(msg.arg1, msg.arg2);
+                       a.setLoading(false);
+                       a.mLoadingMoreProgressBar.setVisibility(View.GONE);
+                       a.mUpdatingProgressBar.setVisibility(View.GONE);
+                       break;
+                   case MSG_UPDATE_HOME_PAGE_DONE:
+                       a.mPaperAdapter.notifyDataSetChanged();
+                       a.mSwipeLayout.setRefreshing(false);
+                       a.mUpdatingProgressBar.setVisibility(View.GONE);
+                       break;
+                   case MSG_SHOW_LAST_CONTENTS_HINT:
+                       Toast.makeText(a,
+                               R.string.update_to_date, Toast.LENGTH_SHORT).show();;
+                       a.mSwipeLayout.setRefreshing(false);
+                       break;
+                   case MSG_UPDATE_HOME_PAGE_REGULAR:
+                       ManagerShareActivity.info("update regular");
+                       a.refreshHomePage(true);
+                       a.mHandler.sendEmptyMessageDelayed(MSG_UPDATE_HOME_PAGE_REGULAR, REGULAR_UPDATE_HOME_TIME);
+                       break;
+
+                   default:
+                       break;
+               }
+           }
+       }
+   }
+
+    private static Handler mHandler;
 
     private boolean isTopTask() {
         final ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
