@@ -125,62 +125,6 @@ public class ManagerShareActivity extends Activity implements
         */
         setContentView(R.layout.activity_manager_share);
 
-        mThumbnailDownloader = new ThumbnailDownloader<ImageView>(new Handler());
-        mThumbnailDownloader.setListener(new ThumbnailDownloader.Listener<ImageView>() {
-            @Override
-            public void onThumbnailDownloaded(ImageView imageView,
-                                              Bitmap bitmap) {
-                imageView.setImageBitmap(bitmap);
-            }
-        });
-
-        mRecyclerView = (RecyclerView) findViewById(R.id.list);
-        mLayoutManager = new LinearLayoutManager(this);
-        mRecyclerView.setLayoutManager(mLayoutManager);
-        mRecyclerView.setItemAnimator(new DefaultItemAnimator());
-
-        mRecyclerView.setOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
-                super.onScrollStateChanged(recyclerView, newState);
-            }
-
-            @Override
-            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-                super.onScrolled(recyclerView, dx, dy);
-                if (isLoading()) return;
-                if (!NetworkUtil.isNetworkAvailed(mConnectivityManager)) {
-                    return;
-                }
-
-                int last = mLayoutManager.findLastVisibleItemPosition();
-                int count = mLayoutManager.getItemCount();
-
-                if ((last + 1) == count && dy > 0) {
-                    dbg("Loading more");
-                    setLoading(true);
-                    mCurrentPage++;
-                    mLoadingMoreProgressBar.setVisibility(View.VISIBLE);
-
-                    startGetNextPage();
-                }
-            }
-        });
-
-        mRecyclerView.setScrollBarSize(30);
-        mRecyclerView.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
-
-        mLoadingMoreProgressBar = (ProgressBar) findViewById(R.id.loadingprogressbar);
-        mUpdatingProgressBar = (ProgressBar) findViewById(R.id.updatingprogressbar);
-        mHeaderHintTextView = (TextView) findViewById(R.id.header_hint);
-
-        mSwipeLayout = (SwipeRefreshLayout) findViewById(R.id.swipe_container);
-        mSwipeLayout.setOnRefreshListener(this);
-
-
-        mThumbnailDownloader.start();
-        mThumbnailDownloader.getLooper();
-
         mHandler = new UIHandler(this);
         mHandler.removeMessages(MSG_UPDATE_HOME_PAGE_REGULAR);
         mHandler.sendEmptyMessageDelayed(MSG_UPDATE_HOME_PAGE_REGULAR, REGULAR_UPDATE_HOME_TIME);
@@ -188,8 +132,12 @@ public class ManagerShareActivity extends Activity implements
 
         mConnectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
 
-        mHandler.sendEmptyMessage(MSG_OBTAIN_NEWS_FROM_LOCAL);
+        mHandler.sendEmptyMessage(MSG_INITIALIZE_LATER);
 
+        mUpdatingProgressBar = (ProgressBar) findViewById(R.id.updatingprogressbar);
+        mHeaderHintTextView = (TextView) findViewById(R.id.header_hint);
+        mRecyclerView = (RecyclerView) findViewById(R.id.list);
+        mLayoutManager = new LinearLayoutManager(this);
         if (NetworkUtil.isNetworkAvailed(mConnectivityManager)) {
             refreshHomePage(false);
         } else {
@@ -201,9 +149,6 @@ public class ManagerShareActivity extends Activity implements
         IntentFilter filter = new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION);
         registerReceiver(mNetworkReceiver, filter);
 
-        mPaperAdapter = new PaperAdapter(this, mPapers, mThumbnailDownloader);
-        mPaperAdapter.setOnItemClickListener(mOnItemClickListener);
-        mRecyclerView.setAdapter(mPaperAdapter);
     }
 
     private static final int HEADER_HINT_TYPE_INFO = 0;
@@ -279,7 +224,7 @@ public class ManagerShareActivity extends Activity implements
     private static final int MSG_UPDATE_HOME_PAGE_REGULAR = 3;
     private static final int MSG_CONNECT_TIME_OUT = 4;
     private static final int MSG_REMOVE_NEWS = 5;
-    private static final int MSG_OBTAIN_NEWS_FROM_LOCAL = 6;
+    private static final int MSG_INITIALIZE_LATER = 6;
 
    private static class UIHandler extends Handler {
        private final WeakReference<ManagerShareActivity> activity;
@@ -290,7 +235,7 @@ public class ManagerShareActivity extends Activity implements
 
        @Override
        public void handleMessage(Message msg) {
-           ManagerShareActivity a = activity.get();
+           final ManagerShareActivity a = activity.get();
            if (a != null) {
                switch (msg.what) {
                    case MSG_REMOVE_NEWS:
@@ -324,7 +269,61 @@ public class ManagerShareActivity extends Activity implements
                        mHandler.removeMessages(MSG_UPDATE_HOME_PAGE_REGULAR);
                        a.mHandler.sendEmptyMessageDelayed(MSG_UPDATE_HOME_PAGE_REGULAR, REGULAR_UPDATE_HOME_TIME);
                        break;
-                   case MSG_OBTAIN_NEWS_FROM_LOCAL:
+                   case MSG_INITIALIZE_LATER:
+                       a.mThumbnailDownloader = new ThumbnailDownloader<ImageView>(new Handler());
+                       a.mThumbnailDownloader.setListener(new ThumbnailDownloader.Listener<ImageView>() {
+                           @Override
+                           public void onThumbnailDownloaded(ImageView imageView,
+                                                             Bitmap bitmap) {
+                               imageView.setImageBitmap(bitmap);
+                           }
+                       });
+
+                       a.mRecyclerView.setLayoutManager(a.mLayoutManager);
+                       a.mRecyclerView.setItemAnimator(new DefaultItemAnimator());
+
+                       a.mRecyclerView.setOnScrollListener(new RecyclerView.OnScrollListener() {
+                           @Override
+                           public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
+                               super.onScrollStateChanged(recyclerView, newState);
+                           }
+
+                           @Override
+                           public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+                               super.onScrolled(recyclerView, dx, dy);
+                               if (a.isLoading()) return;
+                               if (!NetworkUtil.isNetworkAvailed(a.mConnectivityManager)) {
+                                   return;
+                               }
+
+                               int last = a.mLayoutManager.findLastVisibleItemPosition();
+                               int count = a.mLayoutManager.getItemCount();
+
+                               if ((last + 1) == count && dy > 0) {
+                                   dbg("Loading more");
+                                   a.setLoading(true);
+                                   a.mCurrentPage++;
+                                   a.mLoadingMoreProgressBar.setVisibility(View.VISIBLE);
+
+                                   a.startGetNextPage();
+                               }
+                           }
+                       });
+
+                       a.mRecyclerView.setScrollBarSize(30);
+                       a.mRecyclerView.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
+
+                       a.mLoadingMoreProgressBar = (ProgressBar) a.findViewById(R.id.loadingprogressbar);
+
+                       a.mSwipeLayout = (SwipeRefreshLayout) a.findViewById(R.id.swipe_container);
+                       a.mSwipeLayout.setOnRefreshListener(a);
+
+
+                       a.mThumbnailDownloader.start();
+                       a.mThumbnailDownloader.getLooper();
+
+                       a.mPaperAdapter = new PaperAdapter(a, a.mPapers, a.mThumbnailDownloader);
+                       a.mPaperAdapter.setOnItemClickListener(a.mOnItemClickListener);
                        try {
                            List<Paper> papers = a.parseJsonForPapers(MiscUtil.readFromFile(NEWS_JSON_PATH));
                            if (!papers.isEmpty()) {
@@ -337,6 +336,8 @@ public class ManagerShareActivity extends Activity implements
                        } catch (IOException e) {
                            error("read news from json:" + MiscUtil.getStackTrace(e));
                        }
+
+                       a.mRecyclerView.setAdapter(a.mPaperAdapter);
                        break;
 
                    default:
@@ -500,20 +501,22 @@ public class ManagerShareActivity extends Activity implements
             List<Paper> news = new CopyOnWriteArrayList<Paper>();
             try {
                 Document doc = getWebDocument(0);
-                String lastPaper = getFromLocal || mPapers.isEmpty() ? "" : mPapers.get(0).mHref;
-                news = parseDocument(doc, lastPaper);
-                if (news.isEmpty() && !isBackground) {
-                    mHandler.sendEmptyMessage(MSG_SHOW_LAST_CONTENTS_HINT);
-                    isBackground = true;
-                    return;
-                } else {
-                    if (getFromLocal && !mPapers.isEmpty()) {
-                        getFromLocal = false;
-                        removeNews(0, mPapers.size() - 1);
-                        ManagerShareActivity.info("news size:" + news.size());
-                        setNews(news);
+                synchronized (mPapers) {
+                    String lastPaper = getFromLocal || mPapers.isEmpty() ? "" : mPapers.get(0).mHref;
+                    news = parseDocument(doc, lastPaper);
+                    if (news.isEmpty() && !isBackground) {
+                        mHandler.sendEmptyMessage(MSG_SHOW_LAST_CONTENTS_HINT);
+                        isBackground = true;
+                        return;
                     } else {
-                        addAllNews(0, news);
+                        if (getFromLocal && !mPapers.isEmpty()) {
+                            getFromLocal = false;
+                            removeNews(0, mPapers.size() - 1);
+                            ManagerShareActivity.info("news size:" + news.size());
+                            setNews(news);
+                        } else {
+                            addAllNews(0, news);
+                        }
                     }
                 }
             } catch (IOException e) {
@@ -536,22 +539,24 @@ public class ManagerShareActivity extends Activity implements
             }
             try {
                 Document doc = getWebDocument();
-                List<Paper> news = parseDocument(doc, "fuck");
-                // because home page will be added some news, so every page will be changed.
-                // ---xxx | xxx---   . delete the xxx
                 synchronized (mPapers) {
-                    String oldest = mPapers.get(mPapers.size() - 1).mHref;
-                    int length = news.size();
-                    String first = "";
-                    for (int index = 0; index < length; index++) {
-                        first = news.get(index).mHref;
-                        if (oldest.equals(first)) {
-                            removeNew(mPapers.size() - 1);
-                            oldest = mPapers.get(mPapers.size() - 1).mHref;
+                    List<Paper> news = parseDocument(doc, "fuck");
+                    // because home page will be added some news, so every page will be changed.
+                    // ---xxx | xxx---   . delete the xxx
+                    synchronized (mPapers) {
+                        String oldest = mPapers.get(mPapers.size() - 1).mHref;
+                        int length = news.size();
+                        String first = "";
+                        for (int index = 0; index < length; index++) {
+                            first = news.get(index).mHref;
+                            if (oldest.equals(first)) {
+                                removeNew(mPapers.size() - 1);
+                                oldest = mPapers.get(mPapers.size() - 1).mHref;
+                            }
                         }
                     }
+                    addAllNews(news);
                 }
-                addAllNews(news);
             } catch (IOException e) {
                 e.printStackTrace();
                 error("connect time out");
