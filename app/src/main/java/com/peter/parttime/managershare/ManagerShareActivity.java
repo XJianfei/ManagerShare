@@ -68,6 +68,7 @@ public class ManagerShareActivity extends Activity implements
     }
     public static final String NEWS_JSON_PATH = getWebNewsDir() + "news.json";
     private static final int MAX_CACHE_NEWS = 30;
+    private static final int HOME_PAGE_NEWS_COUNT = 20;
     private static final int CONNECT_TIME_OUT = 3000;
 
     private SwipeRefreshLayout mSwipeLayout;
@@ -187,16 +188,7 @@ public class ManagerShareActivity extends Activity implements
 
         mConnectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
 
-        try {
-            List<Paper> papers = parseJsonForPapers(MiscUtil.readFromFile(NEWS_JSON_PATH));
-            if (!papers.isEmpty()) {
-                mPapers.addAll(papers.subList(0, papers.size() > 20 ? 20 : papers.size() - 1));
-            }
-        } catch (JSONException e) {
-            error("read news from json:" + MiscUtil.getStackTrace(e));
-        } catch (IOException e) {
-            error("read news from json:" + MiscUtil.getStackTrace(e));
-        }
+        mHandler.sendEmptyMessage(MSG_OBTAIN_NEWS_FROM_LOCAL);
 
         if (NetworkUtil.isNetworkAvailed(mConnectivityManager)) {
             refreshHomePage(false);
@@ -287,6 +279,7 @@ public class ManagerShareActivity extends Activity implements
     private static final int MSG_UPDATE_HOME_PAGE_REGULAR = 3;
     private static final int MSG_CONNECT_TIME_OUT = 4;
     private static final int MSG_REMOVE_NEWS = 5;
+    private static final int MSG_OBTAIN_NEWS_FROM_LOCAL = 6;
 
    private static class UIHandler extends Handler {
        private final WeakReference<ManagerShareActivity> activity;
@@ -330,6 +323,20 @@ public class ManagerShareActivity extends Activity implements
                        a.refreshHomePage(true);
                        mHandler.removeMessages(MSG_UPDATE_HOME_PAGE_REGULAR);
                        a.mHandler.sendEmptyMessageDelayed(MSG_UPDATE_HOME_PAGE_REGULAR, REGULAR_UPDATE_HOME_TIME);
+                       break;
+                   case MSG_OBTAIN_NEWS_FROM_LOCAL:
+                       try {
+                           List<Paper> papers = a.parseJsonForPapers(MiscUtil.readFromFile(NEWS_JSON_PATH));
+                           if (!papers.isEmpty()) {
+                               int size = papers.size() > HOME_PAGE_NEWS_COUNT ? HOME_PAGE_NEWS_COUNT : papers.size() - 1;
+                               a.mPapers.addAll(papers.subList(0, size));
+                               a.mPaperAdapter.notifyItemRangeChanged(0, HOME_PAGE_NEWS_COUNT);
+                           }
+                       } catch (JSONException e) {
+                           error("read news from json:" + MiscUtil.getStackTrace(e));
+                       } catch (IOException e) {
+                           error("read news from json:" + MiscUtil.getStackTrace(e));
+                       }
                        break;
 
                    default:
@@ -407,20 +414,24 @@ public class ManagerShareActivity extends Activity implements
     private void setNews(List<Paper> news) {
         mPapers.clear();
         mPapers.addAll(news);
+        saveNewsToCache();
         mHandler.sendEmptyMessage(MSG_UPDATE_HOME_PAGE_DONE);
     }
     private void addAllNews(int position, List<Paper> news) {
         synchronized (mPapers) {
             mPapers.addAll(position, news);
-            saveNewsToCache();
+            if (position < HOME_PAGE_NEWS_COUNT)
+                saveNewsToCache();
         }
         mHandler.sendEmptyMessage(MSG_UPDATE_HOME_PAGE_DONE);
     }
     private void addAllNews(List<Paper> news) {
         synchronized (mPapers) {
+            int count = mPapers.size();
             mPapers.addAll(news);
-            saveNewsToCache();
-        }
+            if (count < HOME_PAGE_NEWS_COUNT)
+                saveNewsToCache();
+            }
         Message msg = mHandler.obtainMessage(MSG_LOAD_NEXT_PAGE_DONE,
                 mPaperAdapter.getItemCount() - news.size(), mPaperAdapter.getItemCount() - 1);
         mHandler.sendMessage(msg);
