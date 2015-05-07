@@ -31,6 +31,9 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -46,6 +49,7 @@ import java.net.URL;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import peter.parttime.utils.MiscUtil;
 import peter.parttime.utils.NetworkUtil;
 
 
@@ -58,6 +62,12 @@ public class ManagerShareActivity extends Activity implements
         String dir = Environment.getExternalStorageDirectory().getAbsolutePath();
         return dir + "/" + APP_NAME + "/article/";
     }
+    public static final String getWebNewsDir() {
+        String dir = Environment.getExternalStorageDirectory().getAbsolutePath();
+        return dir + "/" + APP_NAME + "/news/";
+    }
+    public static final String NEWS_JSON_PATH = getWebNewsDir() + "news.json";
+    private static final int MAX_CACHE_NEWS = 30;
     private static final int CONNECT_TIME_OUT = 3000;
 
     private SwipeRefreshLayout mSwipeLayout;
@@ -127,7 +137,6 @@ public class ManagerShareActivity extends Activity implements
         mLayoutManager = new LinearLayoutManager(this);
         mRecyclerView.setLayoutManager(mLayoutManager);
         mRecyclerView.setItemAnimator(new DefaultItemAnimator());
-        mPaperAdapter = new PaperAdapter(this, mPapers, mThumbnailDownloader);
 
         mRecyclerView.setOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
@@ -157,8 +166,6 @@ public class ManagerShareActivity extends Activity implements
             }
         });
 
-        mPaperAdapter.setOnItemClickListener(mOnItemClickListener);
-        mRecyclerView.setAdapter(mPaperAdapter);
         mRecyclerView.setScrollBarSize(30);
         mRecyclerView.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
 
@@ -179,6 +186,18 @@ public class ManagerShareActivity extends Activity implements
         ManagerShareActivity.info("Start Manager share");
 
         mConnectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+
+        try {
+            List<Paper> papers = parseJsonForPapers(MiscUtil.readFromFile(NEWS_JSON_PATH));
+            if (!papers.isEmpty()) {
+                mPapers.addAll(papers.subList(0, papers.size() > 20 ? 20 : papers.size() - 1));
+            }
+        } catch (JSONException e) {
+            error("read news from json:" + MiscUtil.getStackTrace(e));
+        } catch (IOException e) {
+            error("read news from json:" + MiscUtil.getStackTrace(e));
+        }
+
         if (NetworkUtil.isNetworkAvailed(mConnectivityManager)) {
             refreshHomePage(false);
         } else {
@@ -189,6 +208,10 @@ public class ManagerShareActivity extends Activity implements
         mNetworkReceiver = new NetworkReceiver();
         IntentFilter filter = new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION);
         registerReceiver(mNetworkReceiver, filter);
+
+        mPaperAdapter = new PaperAdapter(this, mPapers, mThumbnailDownloader);
+        mPaperAdapter.setOnItemClickListener(mOnItemClickListener);
+        mRecyclerView.setAdapter(mPaperAdapter);
     }
 
     private static final int HEADER_HINT_TYPE_INFO = 0;
@@ -263,6 +286,7 @@ public class ManagerShareActivity extends Activity implements
     private static final int MSG_SHOW_LAST_CONTENTS_HINT = 2;
     private static final int MSG_UPDATE_HOME_PAGE_REGULAR = 3;
     private static final int MSG_CONNECT_TIME_OUT = 4;
+    private static final int MSG_REMOVE_NEWS = 5;
 
    private static class UIHandler extends Handler {
        private final WeakReference<ManagerShareActivity> activity;
@@ -276,13 +300,17 @@ public class ManagerShareActivity extends Activity implements
            ManagerShareActivity a = activity.get();
            if (a != null) {
                switch (msg.what) {
+                   case MSG_REMOVE_NEWS:
+                       a.mPaperAdapter.notifyItemRangeRemoved(msg.arg1, msg.arg2 - msg.arg1);
+                       info("remove news");
+                       break;
                    case MSG_CONNECT_TIME_OUT:
                        a.mUpdatingProgressBar.setVisibility(View.GONE);
                        a.mLoadingMoreProgressBar.setVisibility(View.GONE);
                        a.mSwipeLayout.setRefreshing(false);
                        break;
                    case MSG_LOAD_NEXT_PAGE_DONE:
-                       a.mPaperAdapter.notifyItemRangeChanged(msg.arg1, msg.arg2);
+                       a.mPaperAdapter.notifyItemRangeChanged(msg.arg1, msg.arg2 - msg.arg1);
                        a.setLoading(false);
                        a.mLoadingMoreProgressBar.setVisibility(View.GONE);
                        a.mUpdatingProgressBar.setVisibility(View.GONE);
@@ -376,18 +404,53 @@ public class ManagerShareActivity extends Activity implements
         return getWebDocument(mCurrentPage);
     }
 
+    private void setNews(List<Paper> news) {
+        mPapers.clear();
+        mPapers.addAll(news);
+        mHandler.sendEmptyMessage(MSG_UPDATE_HOME_PAGE_DONE);
+    }
     private void addAllNews(int position, List<Paper> news) {
         synchronized (mPapers) {
             mPapers.addAll(position, news);
+            saveNewsToCache();
         }
         mHandler.sendEmptyMessage(MSG_UPDATE_HOME_PAGE_DONE);
     }
     private void addAllNews(List<Paper> news) {
         synchronized (mPapers) {
             mPapers.addAll(news);
+            saveNewsToCache();
         }
         Message msg = mHandler.obtainMessage(MSG_LOAD_NEXT_PAGE_DONE,
                 mPaperAdapter.getItemCount() - news.size(), mPaperAdapter.getItemCount() - 1);
+        mHandler.sendMessage(msg);
+    }
+
+    private void saveNewsToCache() {
+        int count = mPapers.size();
+        if (count > MAX_CACHE_NEWS)
+            count = MAX_CACHE_NEWS;
+
+        writeJsonToFile(papersToJson(mPapers.subList(0, count - 1)), NEWS_JSON_PATH);
+    }
+
+    private void removeNewData(int position) {
+        mPapers.remove(position);
+    }
+    private void removeNew(int position) {
+        removeNew(position);
+        Message msg = mHandler.obtainMessage(MSG_REMOVE_NEWS, position, 1);
+        mHandler.sendMessage(msg);
+    }
+    private void removeNews(int start, int end) {
+        if (start >= mPapers.size())
+            start = mPapers.size() - 1;
+        if (end >= mPapers.size())
+            end = mPapers.size() - 1;
+        do {
+            removeNewData(start);
+        } while (start < end--);
+        Message msg = mHandler.obtainMessage(MSG_REMOVE_NEWS, start, end);
         mHandler.sendMessage(msg);
     }
 
@@ -417,6 +480,7 @@ public class ManagerShareActivity extends Activity implements
     }
 
     private UpdateHomePageRunnable mUpdateHomePageRunnable = new UpdateHomePageRunnable();
+    private boolean getFromLocal = true;
     private class UpdateHomePageRunnable implements Runnable {
 
         public boolean isBackground = false;
@@ -425,18 +489,24 @@ public class ManagerShareActivity extends Activity implements
             List<Paper> news = new CopyOnWriteArrayList<Paper>();
             try {
                 Document doc = getWebDocument(0);
-                String lastPaper = mPapers.isEmpty() ? "" : mPapers.get(0).mHref;
+                String lastPaper = getFromLocal || mPapers.isEmpty() ? "" : mPapers.get(0).mHref;
                 news = parseDocument(doc, lastPaper);
                 if (news.isEmpty() && !isBackground) {
                     mHandler.sendEmptyMessage(MSG_SHOW_LAST_CONTENTS_HINT);
                     isBackground = true;
                     return;
                 } else {
-                    addAllNews(0, news);
+                    if (getFromLocal && !mPapers.isEmpty()) {
+                        getFromLocal = false;
+                        removeNews(0, mPapers.size() - 1);
+                        ManagerShareActivity.info("news size:" + news.size());
+                        setNews(news);
+                    } else {
+                        addAllNews(0, news);
+                    }
                 }
             } catch (IOException e) {
-                e.printStackTrace();
-                error("connect time out");
+                error("connect time out: " + MiscUtil.getStackTrace(e));
                 mHandler.sendEmptyMessage(MSG_CONNECT_TIME_OUT);
             }
             if (!news.isEmpty() && !isTopTask())
@@ -465,7 +535,7 @@ public class ManagerShareActivity extends Activity implements
                     for (int index = 0; index < length; index++) {
                         first = news.get(index).mHref;
                         if (oldest.equals(first)) {
-                            mPapers.remove(mPapers.size() - 1);
+                            removeNew(mPapers.size() - 1);
                             oldest = mPapers.get(mPapers.size() - 1).mHref;
                         }
                     }
@@ -568,5 +638,65 @@ public class ManagerShareActivity extends Activity implements
             mHref = href;
         }
     }
+
+    public static final String JSON_NEWS_ARRAY = "news";
+    public static final String JSON_NEWS_TITLE = "title";
+    public static final String JSON_NEWS_SUMMARY = "summary";
+    public static final String JSON_NEWS_PICTURE = "picture";
+    public static final String JSON_NEWS_DATE = "date";
+    public static final String JSON_NEWS_HREF = "href";
+    JSONObject papersToJson(List<Paper> papers) {
+        JSONObject json = new JSONObject();
+        JSONArray array = null;
+        try {
+            array = new JSONArray();
+            JSONObject obj;
+            for (Paper paper : papers) {
+                obj = new JSONObject();
+                obj.put(JSON_NEWS_TITLE, paper.mTitle);
+                obj.put(JSON_NEWS_SUMMARY, paper.mSummary);
+                obj.put(JSON_NEWS_DATE, paper.mDate);
+                obj.put(JSON_NEWS_PICTURE, paper.mPicture);
+                obj.put(JSON_NEWS_HREF, paper.mHref);
+                array.put(obj);
+            }
+            json.put(JSON_NEWS_ARRAY, array);
+        } catch (JSONException e) {
+            error("papersToJson failed: " + MiscUtil.getStackTrace(e));
+        }
+        return json;
+    }
+    List<Paper> parseJsonForPapers(String content) throws JSONException {
+        if (content == null) return null;
+
+        List<Paper> papers = new CopyOnWriteArrayList<Paper>();
+        Paper paper;
+        JSONObject json = new JSONObject(content);
+        JSONArray news = json.getJSONArray(JSON_NEWS_ARRAY);
+        int length = news.length();
+        String title, summary, picture, date, href;
+        for (int i = 0; i < length; i++) {
+            JSONObject obj = news.getJSONObject(i);
+            title = obj.getString(JSON_NEWS_TITLE);
+            summary = obj.getString(JSON_NEWS_SUMMARY);
+            picture = obj.getString(JSON_NEWS_PICTURE);
+            date = obj.getString(JSON_NEWS_DATE);
+            href = obj.getString(JSON_NEWS_HREF);
+            paper = new Paper(title, summary, picture, date, href);
+            papers.add(paper);
+        }
+        return papers;
+    }
+
+    boolean writeJsonToFile(JSONObject json, String path) {
+        boolean ret = false;
+        try {
+            ret = MiscUtil.writeToFile(path, json.toString());
+        } catch (IOException e) {
+            error("write json to file: " + MiscUtil.getStackTrace(e));
+        }
+        return ret;
+    }
+
 
 }

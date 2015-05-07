@@ -1,14 +1,22 @@
 package peter.parttime.utils;
 
+import com.peter.parttime.managershare.ManagerShareActivity;
+
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.io.Serializable;
 import java.io.StreamCorruptedException;
+import java.io.StringWriter;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
@@ -95,5 +103,39 @@ public class MiscUtil {
             }
         }
         return s;
+    }
+
+    public static boolean writeToFile(String path, String content) throws IOException {
+        File file = new File(path);
+        if (content == null) return false;
+        if (!file.getParentFile().exists()) {
+            if (!file.getParentFile().mkdirs())
+                return false;
+        }
+
+        OutputStream out = new FileOutputStream(file);
+        out.write(content.getBytes());
+        out.close();
+        return true;
+    }
+
+    public static String readFromFile(String path) throws IOException {
+        String content = null;
+        BufferedReader in = new BufferedReader(new FileReader(path));
+        StringBuffer buffer = new StringBuffer();
+        do {
+            content = in.readLine();
+            buffer.append(content + "\n");
+        } while (content != null);
+        in.close();
+        return buffer.toString();
+    }
+
+
+    public static String getStackTrace(final Throwable throwable) {
+        final StringWriter sw = new StringWriter();
+        final PrintWriter pw = new PrintWriter(sw, true);
+        throwable.printStackTrace(pw);
+        return sw.getBuffer().toString();
     }
 }
