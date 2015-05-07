@@ -282,7 +282,7 @@ public class ManagerShareActivity extends Activity implements
                        a.mSwipeLayout.setRefreshing(false);
                        break;
                    case MSG_LOAD_NEXT_PAGE_DONE:
-                       a.mPaperAdapter.notifyItemRangeInserted(msg.arg1, msg.arg2);
+                       a.mPaperAdapter.notifyItemRangeChanged(msg.arg1, msg.arg2);
                        a.setLoading(false);
                        a.mLoadingMoreProgressBar.setVisibility(View.GONE);
                        a.mUpdatingProgressBar.setVisibility(View.GONE);
@@ -332,7 +332,7 @@ public class ManagerShareActivity extends Activity implements
         mIsShowing = true;
     }
 
-    private int mCurrentPage = 0;
+    private int mCurrentPage = 1;
     public static final String USER_AGENT = "Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.37 Safari/537.36";
 
 //    private int reservePaperCount = 3;
@@ -425,7 +425,7 @@ public class ManagerShareActivity extends Activity implements
             List<Paper> news = new CopyOnWriteArrayList<Paper>();
             try {
                 Document doc = getWebDocument(0);
-                String lastPaper = mPapers.isEmpty() ? "" : mPapers.get(0).mTitle;
+                String lastPaper = mPapers.isEmpty() ? "" : mPapers.get(0).mHref;
                 news = parseDocument(doc, lastPaper);
                 if (news.isEmpty() && !isBackground) {
                     mHandler.sendEmptyMessage(MSG_SHOW_LAST_CONTENTS_HINT);
@@ -456,6 +456,20 @@ public class ManagerShareActivity extends Activity implements
             try {
                 Document doc = getWebDocument();
                 List<Paper> news = parseDocument(doc, "fuck");
+                // because home page will be added some news, so every page will be changed.
+                // ---xxx | xxx---   . delete the xxx
+                synchronized (mPapers) {
+                    String oldest = mPapers.get(mPapers.size() - 1).mHref;
+                    int length = news.size();
+                    String first = "";
+                    for (int index = 0; index < length; index++) {
+                        first = news.get(index).mHref;
+                        if (oldest.equals(first)) {
+                            mPapers.remove(mPapers.size() - 1);
+                            oldest = mPapers.get(mPapers.size() - 1).mHref;
+                        }
+                    }
+                }
                 addAllNews(news);
             } catch (IOException e) {
                 e.printStackTrace();
