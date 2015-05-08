@@ -103,6 +103,7 @@ public class WebArticleActivity extends Activity {
                     oldValue = null;
                 }
             }
+
         };
 
         new Thread(mGetArticalRunnable).start();
@@ -173,7 +174,7 @@ public class WebArticleActivity extends Activity {
         // from local
         String cache = MiscUtil.toMD5(url);
         ManagerShareActivity.dbg("url: " + url + " cache:" + cache);
-        cache = ManagerShareActivity.getWebCacheDir() + cache;
+        cache = ManagerShareActivity.getWebArticleDir() + cache;
         if (cache != null) {
             try {
                 article = (Article) MiscUtil.restoreSerializable(cache);
@@ -194,6 +195,7 @@ public class WebArticleActivity extends Activity {
         article.meta = doc.select(".post_meta").text();
         article.path = url;
         if (cache != null) {
+            /*
             File dir = new File(cache).getParentFile();
             File[] files = dir.listFiles();
             long oldest = Long.MAX_VALUE;
@@ -211,6 +213,7 @@ public class WebArticleActivity extends Activity {
                     old.delete();
                 }
             }
+            */
             MiscUtil.storeSerializable(article, cache);
         }
         return article;
@@ -287,8 +290,13 @@ public class WebArticleActivity extends Activity {
         public Bitmap fetchDrawable(String urlString) {
             Bitmap b = null;
             try {
-                byte[] bitmapBytes = ManagerShareActivity.getUrlBytes(urlString);
-                final Bitmap bitmap = BitmapFactory.decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
+                Bitmap bitmap;
+                bitmap = ManagerShareActivity.getImageFromFile(urlString);
+                if (bitmap == null) {
+                    byte[] bitmapBytes = ManagerShareActivity.getUrlBytes(urlString);
+                    bitmap = BitmapFactory.decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
+                    ManagerShareActivity.saveBitmapToFile(bitmap, ManagerShareActivity.getImagePath(urlString));
+                }
                 int maxWidth = mArticleContentTextView.getWidth() - mArticleContentTextView.getPaddingLeft() - mArticleContentTextView.getPaddingRight();
                 if (bitmap.getWidth() > maxWidth) {
                     b = BitmapUtil.scaleWithWidth(bitmap, maxWidth);

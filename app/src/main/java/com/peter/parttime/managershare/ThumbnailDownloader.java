@@ -14,6 +14,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import peter.parttime.utils.BitmapUtil;
+
 public class ThumbnailDownloader<Token> extends HandlerThread {
 
     private static final int MSG_DOWNLOAD = 0;
@@ -84,8 +86,14 @@ public class ThumbnailDownloader<Token> extends HandlerThread {
         if (getCacheImage(key) != null) {
             bitmap = getCacheImage(key);
         } else {
-            byte[] bitmapBytes = ManagerShareActivity.getUrlBytes(url);
-            bitmap = BitmapFactory.decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
+            Bitmap bm = ManagerShareActivity.getImageFromFile(url);
+            if (bm == null) {
+                byte[] bitmapBytes = ManagerShareActivity.getUrlBytes(url);
+                bitmap = BitmapFactory.decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
+                ManagerShareActivity.saveBitmapToFile(bitmap,ManagerShareActivity.getImagePath(url));
+            } else {
+                bitmap = bm;
+            }
             mMemoryCache.put(key, bitmap);
         }
         mResponseHandler.post(new Runnable() {

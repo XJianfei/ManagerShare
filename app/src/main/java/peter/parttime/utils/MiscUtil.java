@@ -1,5 +1,7 @@
 package peter.parttime.utils;
 
+import android.os.StatFs;
+
 import com.peter.parttime.managershare.ManagerShareActivity;
 
 import java.io.BufferedReader;
@@ -19,6 +21,8 @@ import java.io.StreamCorruptedException;
 import java.io.StringWriter;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
+import java.util.Comparator;
 
 public class MiscUtil {
     public static String toMD5(String content) {
@@ -137,5 +141,59 @@ public class MiscUtil {
         final PrintWriter pw = new PrintWriter(sw, true);
         throwable.printStackTrace(pw);
         return sw.getBuffer().toString();
+    }
+
+    public static long getDirAvailableByes(String path) {
+        StatFs statfs = new StatFs(path);
+        if (statfs == null) return -1;
+        return statfs.getAvailableBytes();
+    }
+
+    public static long getDirBytes(String path) {
+        long size = 0;
+        File dir = new File(path);
+        if (!dir.exists()) return -1;
+
+        File[] files = dir.listFiles();
+        for (File file : files) {
+            if (file.isDirectory()) {
+                size += getDirUsagedBytes(file.getAbsolutePath());
+            } else {
+                size += file.length();
+            }
+        }
+        return size;
+    }
+    public static long getDirUsagedBytes(String path) {
+        long size = 0;
+        File dir = new File(path);
+        if (!dir.exists()) return -1;
+
+        final long blockSize = new StatFs(path).getBlockSizeLong();
+        File[] files = dir.listFiles();
+        long length;
+        for (File file : files) {
+            if (file.isDirectory()) {
+                size += getDirUsagedBytes(file.getAbsolutePath());
+            } else {
+                length = file.length();
+                length += blockSize - (length % blockSize);
+                size += length;
+            }
+        }
+        return size;
+    }
+
+    public static void sortFileByLastModified(File[] files) {
+        Arrays.sort(files, new CompratorByLastModified());
+    }
+
+    private static class CompratorByLastModified implements
+            Comparator<File> {
+        @Override
+        public int compare(File f1,
+                           File f2) {
+            return Long.valueOf(f1.lastModified()).compareTo(f2.lastModified());
+        }
     }
 }

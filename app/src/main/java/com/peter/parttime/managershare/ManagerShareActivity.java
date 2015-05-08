@@ -41,14 +41,18 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.ref.WeakReference;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import peter.parttime.utils.BitmapUtil;
 import peter.parttime.utils.MiscUtil;
 import peter.parttime.utils.NetworkUtil;
 
@@ -58,13 +62,18 @@ public class ManagerShareActivity extends Activity implements
     public static final String TAG = "WebCrawler";
     public static final String APP_NAME = "panda_crawler";
 
-    public static final String getWebCacheDir() {
-        String dir = Environment.getExternalStorageDirectory().getAbsolutePath();
-        return dir + "/" + APP_NAME + "/article/";
+
+    private static final long MAX_CACHE_SIZE = 40 * 1024 * 1024;
+    private static final long TIME_CLEAR_CACHE = 5 * 60 * 60 * 1000;
+    public static final String APP_DIR = Environment.getExternalStorageDirectory().getAbsolutePath() + "/" + APP_NAME;
+    public static final String getWebArticleDir() {
+        return APP_DIR + "/article/";
     }
     public static final String getWebNewsDir() {
-        String dir = Environment.getExternalStorageDirectory().getAbsolutePath();
-        return dir + "/" + APP_NAME + "/news/";
+        return APP_DIR + "/news/";
+    }
+    public static final String getWebImagesDir() {
+        return APP_DIR + "/images/";
     }
     public static final String NEWS_JSON_PATH = getWebNewsDir() + "news.json";
     private static final int MAX_CACHE_NEWS = 30;
@@ -179,6 +188,11 @@ public class ManagerShareActivity extends Activity implements
 
         startService(new Intent(ManagerShareActivity.this, UpdateNewsService.class));
 
+        scheduleClearCacheTask();
+    }
+
+    private final void scheduleClearCacheTask() {
+        new Timer().schedule(new ClearCacheTask(), TIME_CLEAR_CACHE);
     }
 
     private static final int HEADER_HINT_TYPE_INFO = 0;
@@ -748,4 +762,50 @@ public class ManagerShareActivity extends Activity implements
     }
 
 
+    public static final String getImagePath(String url) {
+        return getWebImagesDir() + MiscUtil.toMD5(url);
+    }
+    public static final Bitmap getImageFromFile(String url) {
+        return BitmapUtil.getBitmapFromFile(getImagePath(url));
+    }
+    public static final void saveBitmapToFile(Bitmap bm, String path) {
+        try {
+            BitmapUtil.saveBitmapToFile(bm, path);
+        } catch (IOException e) {
+            error("save bitmap to file: " + e);
+        }
+    }
+
+    private class ClearCacheTask extends TimerTask {
+        @Override
+        public void run() {
+            long usagedSize = MiscUtil.getDirUsagedBytes(APP_DIR);
+            while (usagedSize > MAX_CACHE_SIZE) {
+                // clear 1/4
+                // images
+                File[] files = new File(getWebImagesDir()).listFiles();
+                int size = files.length;
+                int count = size >> 2;
+                if (size > 1) {
+                    MiscUtil.sortFileByLastModified(files);
+                    for (int i = 0;i < count; i++) {
+                        files[size - 1 - i].delete();
+                    }
+                }
+
+                // articles
+                files = new File(getWebArticleDir()).listFiles();
+                size = files.length;
+                count = size >> 2;
+                if (size > 1) {
+                    MiscUtil.sortFileByLastModified(files);
+                    for (int i = 0;i < count; i++) {
+                        files[size - 1 - i].delete();
+                    }
+                }
+                usagedSize = MiscUtil.getDirUsagedBytes(APP_DIR);
+            }
+            scheduleClearCacheTask();
+        }
+    }
 }
