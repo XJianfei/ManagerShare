@@ -154,8 +154,6 @@ public class ManagerShareActivity extends Activity implements
         setContentView(R.layout.activity_manager_share);
 
         mHandler = new UIHandler(this);
-        mHandler.removeMessages(MSG_UPDATE_HOME_PAGE_REGULAR);
-//        mHandler.sendEmptyMessageDelayed(MSG_UPDATE_HOME_PAGE_REGULAR, REGULAR_UPDATE_HOME_TIME);
         ManagerShareActivity.info("Start Manager share");
 
         mConnectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -254,7 +252,9 @@ public class ManagerShareActivity extends Activity implements
     private static final int MSG_LOAD_NEXT_PAGE_DONE = 0;
     private static final int MSG_UPDATE_HOME_PAGE_DONE = 1;
     private static final int MSG_SHOW_LAST_CONTENTS_HINT = 2;
-    private static final int MSG_UPDATE_HOME_PAGE_REGULAR = 3;
+    @Deprecated
+    @SuppressWarnings("unused")
+    private static final int MSG_UPDATE_HOME_PAGE_REGULAR = 3; // no use anymore
     private static final int MSG_CONNECT_TIME_OUT = 4;
     private static final int MSG_REMOVE_NEWS = 5;
     private static final int MSG_INITIALIZE_LATER = 6;
@@ -296,12 +296,6 @@ public class ManagerShareActivity extends Activity implements
                        Toast.makeText(a,
                                R.string.update_to_date, Toast.LENGTH_SHORT).show();;
                        a.mSwipeLayout.setRefreshing(false);
-                       break;
-                   case MSG_UPDATE_HOME_PAGE_REGULAR:
-                       ManagerShareActivity.info("update regular");
-                       a.refreshHomePage(true);
-                       mHandler.removeMessages(MSG_UPDATE_HOME_PAGE_REGULAR);
-                       a.mHandler.sendEmptyMessageDelayed(MSG_UPDATE_HOME_PAGE_REGULAR, REGULAR_UPDATE_HOME_TIME);
                        break;
                    case MSG_INITIALIZE_LATER:
                        a.mThumbnailDownloader = new ThumbnailDownloader<ImageView>(new Handler());
