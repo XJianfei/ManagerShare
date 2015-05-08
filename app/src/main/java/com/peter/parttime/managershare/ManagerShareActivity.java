@@ -427,7 +427,7 @@ public class ManagerShareActivity extends Activity implements
 
             String title = paper.select("h3").text();
             String summary = paper.getElementsByClass("post_summary").text();
-            String imgSrc = paper.select(".lazy").first().attr("data-original");
+            String imgSrc = paper.select("img").first().attr("data-original");
             String date = paper.select(".post_meta").text();
             dbg("Article: " + title + " href: " + href + " # " +
                     summary +
