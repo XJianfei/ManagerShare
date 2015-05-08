@@ -22,8 +22,9 @@ import org.jsoup.nodes.Document;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.Serializable;
 import java.lang.ref.WeakReference;
+import java.net.MalformedURLException;
+import java.net.URL;
 
 import peter.parttime.utils.BitmapUtil;
 import peter.parttime.utils.MiscUtil;
@@ -236,6 +237,13 @@ public class WebArticleActivity extends Activity {
         @Override
         public Drawable getDrawable(String source) {
             URLDrawable urlDrawable = new URLDrawable(activity);
+            if (source.startsWith("/")) {
+                try {
+                    URL url = new URL(mPath);
+                    source = "http://" + url.getHost() + source;
+                } catch (MalformedURLException e) {
+                }
+            }
             ManagerShareActivity.dbg("getDrawable: " + source);
             if (activity.mMemoryCache.get(source) != null) {
                 urlDrawable.bitmap = activity.mMemoryCache.get(source);
