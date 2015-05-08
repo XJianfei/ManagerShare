@@ -71,6 +71,32 @@ public class ManagerShareActivity extends Activity implements
     private static final int HOME_PAGE_NEWS_COUNT = 20;
     private static final int CONNECT_TIME_OUT = 3000;
 
+    public static final String ACTION_NEWS_COMMING = "com.peter.crawler.ACTION_NEWS_COMMING";
+    private BroadcastReceiver mNewsReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            dbg("receive action: " + action);
+            if (ACTION_NEWS_COMMING.equals(action)) {
+                try {
+                    List<Paper> locals = parseJsonForPapers(MiscUtil.readFromFile(NEWS_JSON_PATH));
+                    List<Paper> temp = new CopyOnWriteArrayList<Paper>();
+                    for (Paper p : locals) {
+                        if (p.mHref.equals(mPapers.get(0).mHref)) {
+                            break;
+                        }
+                        temp.add(p);
+                    }
+                    if (!temp.isEmpty()) {
+                        addAllNews(0, temp);
+                    }
+                } catch (Exception e) {
+                    error("receiver update: " + MiscUtil.getStackTrace(e));
+                }
+            }
+        }
+    };
+
     private SwipeRefreshLayout mSwipeLayout;
     private RecyclerView mRecyclerView;
     private PaperAdapter mPaperAdapter;
@@ -108,6 +134,8 @@ public class ManagerShareActivity extends Activity implements
     protected void onDestroy() {
         super.onDestroy();
         mThumbnailDownloader.clearQueue();
+        unregisterReceiver(mNewsReceiver);
+        unregisterReceiver(mNetworkReceiver);
     }
 
 
@@ -127,7 +155,7 @@ public class ManagerShareActivity extends Activity implements
 
         mHandler = new UIHandler(this);
         mHandler.removeMessages(MSG_UPDATE_HOME_PAGE_REGULAR);
-        mHandler.sendEmptyMessageDelayed(MSG_UPDATE_HOME_PAGE_REGULAR, REGULAR_UPDATE_HOME_TIME);
+//        mHandler.sendEmptyMessageDelayed(MSG_UPDATE_HOME_PAGE_REGULAR, REGULAR_UPDATE_HOME_TIME);
         ManagerShareActivity.info("Start Manager share");
 
         mConnectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -148,6 +176,10 @@ public class ManagerShareActivity extends Activity implements
         mNetworkReceiver = new NetworkReceiver();
         IntentFilter filter = new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION);
         registerReceiver(mNetworkReceiver, filter);
+        filter = new IntentFilter(ACTION_NEWS_COMMING);
+        registerReceiver(mNewsReceiver, filter);
+
+        startService(new Intent(ManagerShareActivity.this, UpdateNewsService.class));
 
     }
 
@@ -180,6 +212,7 @@ public class ManagerShareActivity extends Activity implements
             new PaperAdapter.OnItemClickListener() {
         @Override
         public void onItemClickListener(View v, Paper p) {
+
             Intent intent = new Intent();
             intent.setComponent(
                     new ComponentName(ManagerShareActivity.this, WebArticleActivity.class));
@@ -225,6 +258,7 @@ public class ManagerShareActivity extends Activity implements
     private static final int MSG_CONNECT_TIME_OUT = 4;
     private static final int MSG_REMOVE_NEWS = 5;
     private static final int MSG_INITIALIZE_LATER = 6;
+
 
    private static class UIHandler extends Handler {
        private final WeakReference<ManagerShareActivity> activity;
@@ -324,6 +358,7 @@ public class ManagerShareActivity extends Activity implements
 
                        a.mPaperAdapter = new PaperAdapter(a, a.mPapers, a.mThumbnailDownloader);
                        a.mPaperAdapter.setOnItemClickListener(a.mOnItemClickListener);
+
                        try {
                            List<Paper> papers = a.parseJsonForPapers(MiscUtil.readFromFile(NEWS_JSON_PATH));
                            if (!papers.isEmpty()) {
@@ -371,8 +406,8 @@ public class ManagerShareActivity extends Activity implements
     private int mCurrentPage = 1;
     public static final String USER_AGENT = "Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.37 Safari/537.36";
 
-//    private int reservePaperCount = 3;
-    private List<Paper> parseDocument(Document doc, String lastPaper) {
+//    private static int reservePaperCount = 3;
+    static List<Paper> parseDocument(Document doc, String lastPaper) {
         List<Paper> news = new CopyOnWriteArrayList<Paper>();
         Elements papers = doc.select(".post_list li");
         for (Element paper: papers) {
@@ -397,9 +432,9 @@ public class ManagerShareActivity extends Activity implements
         }
         return news;
     }
-    private Document getWebDocument(int page) throws IOException {
+    static Document getWebDocument(int page) throws IOException {
         String url = html;
-        if (page != 0)
+        if (page > 1)
             url += "/?&page=" + page;
         dbg("http:" + url);
         Connection conn = Jsoup.connect(url);
@@ -512,7 +547,6 @@ public class ManagerShareActivity extends Activity implements
                         if (getFromLocal && !mPapers.isEmpty()) {
                             getFromLocal = false;
                             removeNews(0, mPapers.size() - 1);
-                            ManagerShareActivity.info("news size:" + news.size());
                             setNews(news);
                         } else {
                             addAllNews(0, news);
@@ -638,7 +672,7 @@ public class ManagerShareActivity extends Activity implements
         }
     }
 
-    public class Paper {
+    static class Paper {
         String mTitle;
         String mSummary;
         String mPicture;
@@ -653,6 +687,11 @@ public class ManagerShareActivity extends Activity implements
             mDate = date;
             mHref = href;
         }
+
+        public boolean isSame(Paper p) {
+            if (p == null) return false;
+            return mHref.equals(p.mHref);
+        }
     }
 
     public static final String JSON_NEWS_ARRAY = "news";
@@ -661,7 +700,7 @@ public class ManagerShareActivity extends Activity implements
     public static final String JSON_NEWS_PICTURE = "picture";
     public static final String JSON_NEWS_DATE = "date";
     public static final String JSON_NEWS_HREF = "href";
-    JSONObject papersToJson(List<Paper> papers) {
+    static JSONObject papersToJson(List<Paper> papers) {
         JSONObject json = new JSONObject();
         JSONArray array = null;
         try {
@@ -682,7 +721,7 @@ public class ManagerShareActivity extends Activity implements
         }
         return json;
     }
-    List<Paper> parseJsonForPapers(String content) throws JSONException {
+    static List<Paper> parseJsonForPapers(String content) throws JSONException {
         if (content == null) return null;
 
         List<Paper> papers = new CopyOnWriteArrayList<Paper>();
@@ -704,7 +743,7 @@ public class ManagerShareActivity extends Activity implements
         return papers;
     }
 
-    boolean writeJsonToFile(JSONObject json, String path) {
+    static boolean writeJsonToFile(JSONObject json, String path) {
         boolean ret = false;
         try {
             ret = MiscUtil.writeToFile(path, json.toString());
