@@ -17,6 +17,8 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v4.app.NotificationCompat;
+import android.support.v4.view.PagerAdapter;
+import android.support.v4.view.ViewPager;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
@@ -47,6 +49,7 @@ import java.io.InputStream;
 import java.lang.ref.WeakReference;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -106,6 +109,8 @@ public class ManagerShareActivity extends Activity implements
         }
     };
 
+    private ViewPager mFocusPaper = null;
+    private PagerAdapter mFocusAdapter = null;
     private SwipeRefreshLayout mSwipeLayout;
     private RecyclerView mRecyclerView;
     private PaperAdapter mPaperAdapter;
@@ -122,12 +127,13 @@ public class ManagerShareActivity extends Activity implements
     private ProgressBar mUpdatingProgressBar = null;
     private TextView mHeaderHintTextView = null;
 
+
     public boolean isLoading() { return mLoading;}
     private void setLoading(boolean l) { mLoading = l;}
 
     private ThumbnailDownloader<ImageView> mThumbnailDownloader;
 
-    private final static String html = "http://www.managershare.com/";
+    public final static String html = "http://www.managershare.com/";
 
     public static void dbg(String msg) {
         Log.d(TAG, "" + msg);
@@ -220,17 +226,22 @@ public class ManagerShareActivity extends Activity implements
             mInvalidNetworkWarningToast = Toast.makeText(this, getString(R.string.no_availed_network), Toast.LENGTH_SHORT);
         mInvalidNetworkWarningToast.show();
     }
+
+    public static void switchToArticle(Activity activity, String uri) {
+        Intent intent = new Intent();
+        intent.setComponent(
+                new ComponentName(activity, WebArticleActivity.class));
+        intent.putExtra(WebArticleActivity.EXTRA_URL, html + "/" + uri);
+        activity.startActivity(intent);
+        activity.overridePendingTransition(R.anim.activity_right_in, R.anim.activity_fade_out);
+    }
+
     private PaperAdapter.OnItemClickListener mOnItemClickListener =
             new PaperAdapter.OnItemClickListener() {
         @Override
         public void onItemClickListener(View v, Paper p) {
+            switchToArticle(ManagerShareActivity.this, p.mHref);
 
-            Intent intent = new Intent();
-            intent.setComponent(
-                    new ComponentName(ManagerShareActivity.this, WebArticleActivity.class));
-            intent.putExtra(WebArticleActivity.EXTRA_URL, html + "/" + p.mHref);
-            startActivity(intent);
-            overridePendingTransition(R.anim.activity_right_in, R.anim.activity_fade_out);
         }
     };
 
@@ -272,6 +283,7 @@ public class ManagerShareActivity extends Activity implements
     private static final int MSG_CONNECT_TIME_OUT = 4;
     private static final int MSG_REMOVE_NEWS = 5;
     private static final int MSG_INITIALIZE_LATER = 6;
+    private static final int MSG_UPDATE_FOCUS_VIEW = 7;
 
 
    private static class UIHandler extends Handler {
@@ -382,6 +394,12 @@ public class ManagerShareActivity extends Activity implements
 
                        a.mRecyclerView.setAdapter(a.mPaperAdapter);
                        break;
+                   case MSG_UPDATE_FOCUS_VIEW:
+                       if (a.mFocusPaper != null) {
+                           a.mFocusPaper.setAdapter(a.mFocusAdapter);
+                           a.mFocusAdapter.notifyDataSetChanged();
+                       }
+                       break;
 
                    default:
                        break;
@@ -414,6 +432,33 @@ public class ManagerShareActivity extends Activity implements
     private int mCurrentPage = 1;
     public static final String USER_AGENT = "Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.37 Safari/537.36";
 
+    List<Paper> parseHomeMainPager(Document doc) {
+        dbg("parseHomeMainPager");
+        List<Paper> news = new CopyOnWriteArrayList<Paper>();
+        Elements papers = doc.select(".main_left .focus .slide a");
+        for (Element paper: papers) {
+            String href = paper.attr("href");
+            String title = paper.attr("title");
+            Element e = paper.select(".slide_thumbnail img").first();
+            String imgSrc = "/";
+            if (e == null) {
+                continue;
+            }
+            imgSrc = e.attr("src");
+            dbg("Focus Article: " + title + " href: " + href + " # " +
+                    "summary " +
+                    " @" + imgSrc);
+            news.add(new Paper(title,
+                    "sumaary",
+                    imgSrc,
+                    "date",
+                    href));
+        }
+        mFocusPaper = (ViewPager)findViewById(R.id.focus);
+        mFocusAdapter = new FocusViewAdapter(this, news);
+        mHandler.sendEmptyMessage(MSG_UPDATE_FOCUS_VIEW);
+        return news;
+    }
 //    private static int reservePaperCount = 3;
     static List<Paper> parseDocument(Document doc, String lastPaper) {
         List<Paper> news = new CopyOnWriteArrayList<Paper>();
@@ -544,6 +589,7 @@ public class ManagerShareActivity extends Activity implements
             List<Paper> news = new CopyOnWriteArrayList<Paper>();
             try {
                 Document doc = getWebDocument(0);
+                parseHomeMainPager(doc);
                 synchronized (mPapers) {
                     String lastPaper = getFromLocal || mPapers.isEmpty() ? "" : mPapers.get(0).mHref;
                     news = parseDocument(doc, lastPaper);
@@ -680,7 +726,7 @@ public class ManagerShareActivity extends Activity implements
         }
     }
 
-    static class Paper {
+    public static class Paper {
         String mTitle;
         String mSummary;
         String mPicture;
