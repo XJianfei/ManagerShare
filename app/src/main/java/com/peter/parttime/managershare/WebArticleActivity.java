@@ -157,7 +157,7 @@ public class WebArticleActivity extends Activity {
                     a.mArticleContentTextView.setText(R.string.no_availed_network);
                     break;
                 case MSG_SET_TEXT_SELECTABLE:
-                    a.mArticleContentTextView.setTextIsSelectable(true);
+                    a.mArticleContentTextView.setTextIsSelectable(false);
                     break;
 
                 default:
