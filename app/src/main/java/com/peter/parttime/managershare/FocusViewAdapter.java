@@ -8,6 +8,7 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v4.view.PagerAdapter;
+import android.support.v4.view.ViewPager;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -136,7 +137,6 @@ public class FocusViewAdapter extends PagerAdapter{
     public Object instantiateItem(ViewGroup container, int position) {
         // TODO Auto-generated method stub
         container.addView(mViews.get(position).v);
-        ManagerShareActivity.dbg("item:"+ mViews.size());
         return mViews.get(position).v;
     }
 

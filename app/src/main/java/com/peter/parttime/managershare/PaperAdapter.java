@@ -13,6 +13,7 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+
 import java.util.List;
 
 public class PaperAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
@@ -24,6 +25,7 @@ public class PaperAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
     private List<ManagerShareActivity.Paper> mFocus;
     private View mHeader = null;
     private FocusViewAdapter mFocusAdapter = null;
+    private TextView mFocusTitleView = null;
     private Context mContext;
     private ThumbnailDownloader<ImageView> mThumbnailDownloader;
     public PaperAdapter(Context context, List<ManagerShareActivity.Paper> papers,
@@ -63,6 +65,9 @@ public class PaperAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
 
     public void updateHeader() {
         if (mFocusAdapter != null) {
+            if (mFocus.size() > 0) {
+                mFocusTitleView.setText(mFocus.get(0).mTitle);
+            }
             mFocusAdapter.updateDatas();
             mFocusAdapter.notifyDataSetChanged();
         }
@@ -81,7 +86,29 @@ public class PaperAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             if (holder.pa == null) {
                 PagerAdapter pa = new FocusViewAdapter((Activity)mContext, mFocus);
                 mFocusAdapter = (FocusViewAdapter) pa;
+                mFocusTitleView = ((ViewHolder) vh).mTitleTextView;
+                if (mFocus.size() > 0) {
+                    ((ViewHolder) vh).mTitleTextView.setText(mFocus.get(0).mTitle);
+                }
                 vp.setAdapter(pa);
+                final TextView tv = ((ViewHolder) vh).mTitleTextView;
+                vp.setOnPageChangeListener(new ViewPager.OnPageChangeListener() {
+                    @Override
+                    public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
+
+                    }
+
+                    @Override
+                    public void onPageSelected(int position) {
+                        if (mFocus.size() > 0 && tv != null)
+                            tv.setText(mFocus.get(position).mTitle);
+                    }
+
+                    @Override
+                    public void onPageScrollStateChanged(int state) {
+
+                    }
+                });
                 holder.pa = pa;
             }
             holder.pa.notifyDataSetChanged();
@@ -123,6 +150,40 @@ public class PaperAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         }
 
     }
+    public static class CubeTransformer implements ViewPager.PageTransformer {
+
+        @Override
+        public void transformPage(View view, float position) {
+            float MIN_SCALE = 0.75f;
+
+            int pageWidth = view.getWidth();
+            if (position < -1) { // [-Infinity,-1)
+                // This page is way off-screen to the left.
+                view.setAlpha(0);
+            } else if (position <= 0) { // [-1,0]
+                // Use the default slide transition when
+                // moving to the left page
+                view.setAlpha(1);
+                view.setTranslationX(0);
+                view.setScaleX(1);
+                view.setScaleY(1);
+            } else if (position <= 1) { // (0,1]
+                // Fade the page out.
+                view.setAlpha(1 - position);
+                // Counteract the default slide transition
+                view.setTranslationX(pageWidth * -position);
+                // Scale the page down (between MIN_SCALE and 1)
+                float scaleFactor = MIN_SCALE + (1 - MIN_SCALE)
+                        * (1 - Math.abs(position));
+                view.setScaleX(scaleFactor);
+                view.setScaleY(scaleFactor);
+            } else { // (1,+Infinity]
+                // This page is way off-screen to the right.
+                view.setAlpha(0);
+
+            }
+        }
+    }
     public static class ViewHolder extends RecyclerView.ViewHolder implements
             View.OnClickListener {
         public TextView mTitleTextView;
@@ -131,6 +192,7 @@ public class PaperAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         public ImageView mImageView;
         public Drawable mPicture;
         public ViewPager vp;
+        public ViewGroup vg;
         public PagerAdapter pa = null;
         public ManagerShareActivity.Paper mPaper;
         public int type = 0;
@@ -152,7 +214,10 @@ public class PaperAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                     init(v);
                     break;
                 case VIEW_TYPE_HEADER:
+                    vg = (ViewGroup)v;
                     vp = (ViewPager) v.findViewById(R.id.focus);
+                    mTitleTextView = (TextView) v.findViewById(R.id.title);
+                    vp.setPageTransformer(true, new CubeTransformer());
                     break;
             }
         }
