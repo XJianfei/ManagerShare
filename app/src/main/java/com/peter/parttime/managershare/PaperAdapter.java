@@ -100,14 +100,31 @@ public class PaperAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                 vp.setOnPageChangeListener(new ViewPager.OnPageChangeListener() {
                     @Override
                     public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
-
+                        int color = mFocusTitleView.getCurrentTextColor() & 0xffffff;
+                        int cur = mFocusIndicator.getPosition();
+                        int alpha;
+                        float xOffset = 0;
+                        if (position < cur) {
+                            xOffset = positionOffset - 1;
+                            alpha = ((int) (positionOffset * 255) << 24);
+                        } else {
+                            alpha = ((int) (255 - positionOffset * 255) << 24);
+                            xOffset = positionOffset;
+                        }
+                        mFocusIndicator.offset = xOffset;
+                        mFocusIndicator.invalidate();
+                        int toColor = color | alpha;
+                        mFocusTitleView.setTextColor(toColor);
                     }
 
                     @Override
                     public void onPageSelected(int position) {
                         if (mFocus.size() > 0 && tv != null) {
                             tv.setText(mFocus.get(position).mTitle);
+                            mFocusIndicator.offset = 0;
                             mFocusIndicator.setPosition(position);
+                            int color = mFocusTitleView.getCurrentTextColor() | 0xff000000;
+                            mFocusTitleView.setTextColor(color);
                         }
                     }
 

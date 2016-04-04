@@ -14,6 +14,7 @@ public class SquareIndicator extends View {
     private int backgroundColor = 0x00000000;
     public int showSize = 4;
     public int position = 0;
+    public float offset = 0;
     public SquareIndicator(Context context) {
         super(context);
     }
@@ -31,8 +32,12 @@ public class SquareIndicator extends View {
     }
 
     public void setPosition(int position) {
+        this.offset = 0;
         this.position = position;
         this.invalidate();
+    }
+    public int getPosition() {
+        return position;
     }
     @Override
     protected void onDraw(Canvas canvas) {
@@ -42,7 +47,9 @@ public class SquareIndicator extends View {
         if (showSize <= 0)
             return;
         paint.setColor(foregroundColor);
-        canvas.drawRect(position * getWidth() / 4, 0,
-                (position + 1) * getWidth() / showSize, getHeight(), paint);
+        int w = getWidth() / showSize;
+        float xOffset = position * w + offset * w;
+        canvas.drawRect(xOffset, 0,
+                xOffset + w, getHeight(), paint);
     }
 }
