@@ -111,6 +111,12 @@ public class PaperAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                             alpha = ((int) (255 - positionOffset * 255) << 24);
                             xOffset = positionOffset;
                         }
+                        // 暂时停止下拉更新swipe功能，否则会出现左右滑被swipe抢的情况
+                        if (Math.abs(xOffset) > 0.05) {
+                            ((ManagerShareActivity)mContext).setSwipable(false);
+                        } else {
+                            ((ManagerShareActivity)mContext).setSwipable(true);
+                        }
                         mFocusIndicator.offset = xOffset;
                         mFocusIndicator.invalidate();
                         int toColor = color | alpha;
@@ -125,12 +131,12 @@ public class PaperAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                             mFocusIndicator.setPosition(position);
                             int color = mFocusTitleView.getCurrentTextColor() | 0xff000000;
                             mFocusTitleView.setTextColor(color);
+                            ((ManagerShareActivity)mContext).setSwipable(true);
                         }
                     }
 
                     @Override
                     public void onPageScrollStateChanged(int state) {
-
                     }
                 });
                 holder.pa = pa;
@@ -187,7 +193,7 @@ public class PaperAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             } else if (position <= 0) { // [-1,0]
                 // Use the default slide transition when
                 // moving to the left page
-                view.setAlpha(1);
+                view.setAlpha(position + 1);
                 view.setTranslationX(0);
                 view.setScaleX(1);
                 view.setScaleY(1);

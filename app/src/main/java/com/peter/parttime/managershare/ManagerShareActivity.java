@@ -199,6 +199,9 @@ public class ManagerShareActivity extends Activity implements
     private final void scheduleClearCacheTask() {
         new Timer().schedule(new ClearCacheTask(), TIME_CLEAR_CACHE);
     }
+    public void setSwipable(boolean b) {
+        mSwipeLayout.setEnabled(b);
+    }
 
     private static final int HEADER_HINT_TYPE_INFO = 0;
     private static final int HEADER_HINT_TYPE_WARNING = 1;
@@ -370,7 +373,6 @@ public class ManagerShareActivity extends Activity implements
 
                        a.mSwipeLayout = (SwipeRefreshLayout) a.findViewById(R.id.swipe_container);
                        a.mSwipeLayout.setOnRefreshListener(a);
-
 
                        a.mThumbnailDownloader.start();
                        a.mThumbnailDownloader.getLooper();
