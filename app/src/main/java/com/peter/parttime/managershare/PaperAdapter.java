@@ -3,6 +3,7 @@ package com.peter.parttime.managershare;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
 import android.support.v4.view.PagerAdapter;
 import android.support.v4.view.ViewPager;
@@ -26,6 +27,7 @@ public class PaperAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
     private View mHeader = null;
     private FocusViewAdapter mFocusAdapter = null;
     private TextView mFocusTitleView = null;
+    private SquareIndicator mFocusIndicator = null;
     private Context mContext;
     private ThumbnailDownloader<ImageView> mThumbnailDownloader;
     public PaperAdapter(Context context, List<ManagerShareActivity.Paper> papers,
@@ -68,6 +70,7 @@ public class PaperAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             if (mFocus.size() > 0) {
                 mFocusTitleView.setText(mFocus.get(0).mTitle);
             }
+            mFocusIndicator.showSize = mFocus.size();
             mFocusAdapter.updateDatas();
             mFocusAdapter.notifyDataSetChanged();
         }
@@ -87,6 +90,8 @@ public class PaperAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                 PagerAdapter pa = new FocusViewAdapter((Activity)mContext, mFocus);
                 mFocusAdapter = (FocusViewAdapter) pa;
                 mFocusTitleView = ((ViewHolder) vh).mTitleTextView;
+                mFocusIndicator = (SquareIndicator) ((ViewHolder) vh).vg.findViewById(R.id.indicator);
+                mFocusIndicator.showSize = mFocus.size();
                 if (mFocus.size() > 0) {
                     ((ViewHolder) vh).mTitleTextView.setText(mFocus.get(0).mTitle);
                 }
@@ -100,8 +105,10 @@ public class PaperAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
 
                     @Override
                     public void onPageSelected(int position) {
-                        if (mFocus.size() > 0 && tv != null)
+                        if (mFocus.size() > 0 && tv != null) {
                             tv.setText(mFocus.get(position).mTitle);
+                            mFocusIndicator.setPosition(position);
+                        }
                     }
 
                     @Override
