@@ -32,13 +32,10 @@ public class FocusViewAdapter extends PagerAdapter{
         Bitmap bm;
     }
 
-    public FocusViewAdapter(Activity a, final List<ManagerShareActivity.Paper> papers) {
-        super();
-        this.papers = papers;
-        mActivity = a;
+    public void updateDatas() {
         if (papers.size() != 0) {
             for (ManagerShareActivity.Paper paper : papers) {
-                ImageView v = new ImageView(a);
+                ImageView v = new ImageView(mActivity);
                 v.setImageResource(R.drawable.p1);
                 v.setScaleType(ImageView.ScaleType.CENTER_CROP);
                 v.setOnClickListener(new View.OnClickListener() {
@@ -112,6 +109,13 @@ public class FocusViewAdapter extends PagerAdapter{
         }).start();
     }
 
+    public FocusViewAdapter(Activity a, final List<ManagerShareActivity.Paper> papers) {
+        super();
+        this.papers = papers;
+        mActivity = a;
+        updateDatas();
+    }
+
     @Override
     public int getCount() {
         return mViews.size();
@@ -132,6 +136,7 @@ public class FocusViewAdapter extends PagerAdapter{
     public Object instantiateItem(ViewGroup container, int position) {
         // TODO Auto-generated method stub
         container.addView(mViews.get(position).v);
+        ManagerShareActivity.dbg("item:"+ mViews.size());
         return mViews.get(position).v;
     }
 

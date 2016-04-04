@@ -1,8 +1,11 @@
 package com.peter.parttime.managershare;
 
+import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
+import android.support.v4.view.PagerAdapter;
+import android.support.v4.view.ViewPager;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -15,24 +18,40 @@ import java.util.List;
 public class PaperAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     private static final int VIEW_TYPE_EMPTY = 199;
+    private static final int VIEW_TYPE_HEADER = 198;
+    private static final int VIEW_TYPE_NORMAL = 197;
     private List<ManagerShareActivity.Paper> mPapers;
+    private List<ManagerShareActivity.Paper> mFocus;
+    private View mHeader = null;
+    private FocusViewAdapter mFocusAdapter = null;
     private Context mContext;
     private ThumbnailDownloader<ImageView> mThumbnailDownloader;
     public PaperAdapter(Context context, List<ManagerShareActivity.Paper> papers,
+                List<ManagerShareActivity.Paper> focus,
                 ThumbnailDownloader<ImageView> loader) {
         mContext = context;
+        mFocus = focus;
         mPapers = papers;
         mThumbnailDownloader = loader;
     }
 
     @Override
     public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.card_view, parent, false);
         if (isEmpty()) {
             View v2 = LayoutInflater.from(parent.getContext()).inflate(R.layout.empty_view, parent, false);
             return new EmptyViewHolder(v2);
         }
-        return new ViewHolder(v);
+        View v;
+        switch (viewType) {
+            case VIEW_TYPE_NORMAL:
+                v = LayoutInflater.from(parent.getContext()).inflate(R.layout.card_view, parent, false);
+                return new ViewHolder(v, VIEW_TYPE_NORMAL);
+            case VIEW_TYPE_HEADER:
+                v = LayoutInflater.from(parent.getContext()).inflate(R.layout.focus_layout, parent, false);
+                return new ViewHolder(v, VIEW_TYPE_HEADER);
+        }
+        View v2 = LayoutInflater.from(parent.getContext()).inflate(R.layout.empty_view, parent, false);
+        return new EmptyViewHolder(v2);
     }
 
     private boolean isEmpty() {
@@ -40,6 +59,13 @@ public class PaperAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             return true;
         }
         return false;
+    }
+
+    public void updateHeader() {
+        if (mFocusAdapter != null) {
+            mFocusAdapter.updateDatas();
+            mFocusAdapter.notifyDataSetChanged();
+        }
     }
 
     @Override
@@ -50,6 +76,17 @@ public class PaperAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         if (!(vh instanceof ViewHolder))
             return;
         ViewHolder holder = (ViewHolder)vh;
+        if (holder.type == VIEW_TYPE_HEADER) {
+            ViewPager vp = holder.vp;
+            if (holder.pa == null) {
+                PagerAdapter pa = new FocusViewAdapter((Activity)mContext, mFocus);
+                mFocusAdapter = (FocusViewAdapter) pa;
+                vp.setAdapter(pa);
+                holder.pa = pa;
+            }
+            holder.pa.notifyDataSetChanged();
+            return;
+        }
         ManagerShareActivity.Paper p = mPapers.get(position);
         holder.mTitleTextView.setText(p.mTitle);
         holder.mDateTextView.setText(p.mDate);
@@ -71,12 +108,13 @@ public class PaperAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
     @Override
     public int getItemViewType(int position) {
         if (isEmpty()) return VIEW_TYPE_EMPTY;
-        return super.getItemViewType(position);
+        if (position == 0) return VIEW_TYPE_HEADER;
+        return VIEW_TYPE_NORMAL;
     }
 
     @Override
     public int getItemCount() {
-        return isEmpty() ? 1 : mPapers.size();
+        return isEmpty() ? 1 : mPapers.size() + 1;
     }
 
     public static class EmptyViewHolder extends RecyclerView.ViewHolder {
@@ -92,7 +130,10 @@ public class PaperAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         public TextView mDateTextView;
         public ImageView mImageView;
         public Drawable mPicture;
+        public ViewPager vp;
+        public PagerAdapter pa = null;
         public ManagerShareActivity.Paper mPaper;
+        public int type = 0;
 
         private void init(View v) {
             mTitleTextView = (TextView) v.findViewById(R.id.title);
@@ -103,9 +144,17 @@ public class PaperAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             v.setClickable(true);
             v.setOnClickListener(this);
         }
-        public ViewHolder(View v) {
+        public ViewHolder(View v, int type) {
             super(v);
-            init(v);
+            this.type = type;
+            switch (type) {
+                case VIEW_TYPE_NORMAL:
+                    init(v);
+                    break;
+                case VIEW_TYPE_HEADER:
+                    vp = (ViewPager) v.findViewById(R.id.focus);
+                    break;
+            }
         }
 
         @Override

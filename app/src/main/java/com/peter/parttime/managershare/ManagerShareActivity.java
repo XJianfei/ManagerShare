@@ -109,13 +109,12 @@ public class ManagerShareActivity extends Activity implements
         }
     };
 
-    private ViewPager mFocusPaper = null;
-    private PagerAdapter mFocusAdapter = null;
     private SwipeRefreshLayout mSwipeLayout;
     private RecyclerView mRecyclerView;
-    private PaperAdapter mPaperAdapter;
+    private com.peter.parttime.managershare.PaperAdapter mPaperAdapter;
     private LinearLayoutManager mLayoutManager;
     private List<Paper> mPapers = new CopyOnWriteArrayList<Paper>();
+    private List<Paper> mFocusPapers = new CopyOnWriteArrayList<Paper>();
 
     private NotificationManager mNotificationManager = null;
     private ConnectivityManager mConnectivityManager = null;
@@ -376,7 +375,7 @@ public class ManagerShareActivity extends Activity implements
                        a.mThumbnailDownloader.start();
                        a.mThumbnailDownloader.getLooper();
 
-                       a.mPaperAdapter = new PaperAdapter(a, a.mPapers, a.mThumbnailDownloader);
+                       a.mPaperAdapter = new PaperAdapter(a, a.mPapers, a.mFocusPapers, a.mThumbnailDownloader);
                        a.mPaperAdapter.setOnItemClickListener(a.mOnItemClickListener);
 
                        try {
@@ -395,10 +394,8 @@ public class ManagerShareActivity extends Activity implements
                        a.mRecyclerView.setAdapter(a.mPaperAdapter);
                        break;
                    case MSG_UPDATE_FOCUS_VIEW:
-                       if (a.mFocusPaper != null) {
-                           a.mFocusPaper.setAdapter(a.mFocusAdapter);
-                           a.mFocusAdapter.notifyDataSetChanged();
-                       }
+                       a.mPaperAdapter.updateHeader();
+                       a.mPaperAdapter.notifyItemRangeChanged(0, 1);
                        break;
 
                    default:
@@ -454,8 +451,8 @@ public class ManagerShareActivity extends Activity implements
                     "date",
                     href));
         }
-        mFocusPaper = (ViewPager)findViewById(R.id.focus);
-        mFocusAdapter = new FocusViewAdapter(this, news);
+        mFocusPapers.clear();
+        mFocusPapers.addAll(news);
         mHandler.sendEmptyMessage(MSG_UPDATE_FOCUS_VIEW);
         return news;
     }
