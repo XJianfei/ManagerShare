@@ -270,9 +270,13 @@ public class WebArticleActivity extends Activity {
         article = new Article();
         article.title = doc.select("h1").first().text();
         article.content = doc.select(".article > p").outerHtml();
+        Element e = doc.select(".article > p img").first();
+        if (e != null) {
+            article.content = article.content.replace(e.outerHtml(), "");
+        }
         article.lead = doc.select(".article .post_lead_r").first().text();
         article.meta = doc.select(".post_meta").text();
-        Element e = doc.select(".article img").first();
+        e = doc.select(".article img").first();
         if (e != null) {
             article.image = e.attr("src");
         } else {
@@ -310,6 +314,7 @@ public class WebArticleActivity extends Activity {
             try {
                 mArticle = obtainArticle(mPath);
                 mHandler.sendEmptyMessage(MSG_GET_WEB_CONTENT_DONE);
+                /* TODO: get actual image
                 if (mArticle.image != null) {
                     Bitmap bm = ManagerShareActivity.getImageFromFile(mArticle.image);
                     if (bm == null) {
@@ -326,6 +331,7 @@ public class WebArticleActivity extends Activity {
                         }
                     });
                 }
+                */
             } catch (IOException e) {
                 ManagerShareActivity.error("Can't connect to " + mPath);
                 ManagerShareActivity.error(MiscUtil.getStackTrace(e));
@@ -402,12 +408,17 @@ public class WebArticleActivity extends Activity {
                     ManagerShareActivity.saveBitmapToFile(bitmap, ManagerShareActivity.getImagePath(urlString));
                 }
                 int maxWidth = mArticleContentTextView.getWidth() - mArticleContentTextView.getPaddingLeft() - mArticleContentTextView.getPaddingRight();
+                // set image width to view width
+                b = BitmapUtil.scaleWithWidth(bitmap, maxWidth);
+                bitmap.recycle();
+                /* scale big image
                 if (bitmap.getWidth() > maxWidth) {
                     b = BitmapUtil.scaleWithWidth(bitmap, maxWidth);
                     bitmap.recycle();
                 } else {
                     b = bitmap;
                 }
+                */
                 mMemoryCache.put(urlString, b);
 
             } catch (Exception e) {
