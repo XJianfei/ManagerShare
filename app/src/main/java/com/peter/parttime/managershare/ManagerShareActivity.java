@@ -16,13 +16,17 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.ActivityOptionsCompat;
 import android.support.v4.app.NotificationCompat;
+import android.support.v4.util.Pair;
 import android.support.v4.view.PagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+//import android.util.Pair;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.util.Log;
@@ -229,21 +233,31 @@ public class ManagerShareActivity extends Activity implements
         mInvalidNetworkWarningToast.show();
     }
 
-    public static void switchToArticle(Activity activity, String uri, String image) {
+    public static void switchToArticle(Activity activity, String uri, String image, View v, View t) {
         Intent intent = new Intent();
         intent.setComponent(
                 new ComponentName(activity, WebArticleActivity.class));
         intent.putExtra(WebArticleActivity.EXTRA_URL, html + "/" + uri);
         intent.putExtra(WebArticleActivity.EXTRA_IMAGE_URL, image);
-        activity.startActivity(intent);
-        activity.overridePendingTransition(R.anim.activity_right_in, R.anim.activity_fade_out);
+
+        ActivityCompat.startActivity(activity, intent,
+                ActivityOptionsCompat.makeSceneTransitionAnimation(
+                        activity,
+                        Pair.create(v, "picture"),
+                        Pair.create(t, "content")
+                ).toBundle());
+//        activity.startActivity(intent);
+//        activity.overridePendingTransition(R.anim.activity_right_in, R.anim.activity_fade_out);
     }
 
     private PaperAdapter.OnItemClickListener mOnItemClickListener =
             new PaperAdapter.OnItemClickListener() {
         @Override
         public void onItemClickListener(View v, Paper p) {
-            switchToArticle(ManagerShareActivity.this, p.mHref, p.mPicture);
+            switchToArticle(ManagerShareActivity.this, p.mHref, p.mPicture,
+                    v.findViewById(R.id.pic),
+                    v.findViewById(R.id.title)
+                    );
 
         }
     };

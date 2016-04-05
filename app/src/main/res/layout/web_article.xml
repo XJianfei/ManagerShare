@@ -6,11 +6,20 @@
     android:layout_width="match_parent" android:layout_height="match_parent">
     <ImageView
         android:id="@+id/image"
-        android:scaleType="fitXY"
+        android:layout_marginTop="10dp"
+        android:scaleType="centerCrop"
+        android:transitionName="picture"
         android:layout_width="match_parent"
         android:layout_height="150dp" />
+    <ProgressBar
+        android:id="@+id/progress"
+        android:indeterminateOnly="true"
+        style="@android:style/Widget.Material.ProgressBar.Horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
     <com.peter.parttime.managershare.ArticleScrollView
         android:id="@+id/article"
+        android:transitionName="content"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scrollbars="vertical"

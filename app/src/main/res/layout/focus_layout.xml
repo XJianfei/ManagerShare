@@ -13,13 +13,4 @@
         android:layout_width="match_parent"
         android:layout_height="3dp">
     </com.peter.parttime.managershare.SquareIndicator>
-    <TextView android:id="@+id/title"
-        android:layout_above="@id/indicator"
-        android:background="#7dffffff"
-        android:textColor="#000000"
-        android:textStyle="bold"
-        android:textSize="18dp"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-    </TextView>
 </RelativeLayout>

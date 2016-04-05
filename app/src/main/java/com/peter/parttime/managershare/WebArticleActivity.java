@@ -3,6 +3,7 @@ package com.peter.parttime.managershare;
 import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -11,6 +12,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.text.Html;
+import android.transition.Transition;
+import android.transition.TransitionManager;
 import android.util.Log;
 import android.util.LruCache;
 import android.view.View;
@@ -46,6 +49,8 @@ public class WebArticleActivity extends Activity {
     private TextView mArticleContentTextView = null;
     private ImageView mImage = null;
     private Article mArticle;
+    private long mStarTime = 0;
+    private static final int RENDER_TIME = 1000;
     /*
     private String mArticleContent = "";
     private String mArticleTitle = "";
@@ -64,7 +69,7 @@ public class WebArticleActivity extends Activity {
      * ATTENTION: This was auto-generated to implement the App Indexing API.
      * See https://g.co/AppIndexing/AndroidStudio for more information.
      */
-    private GoogleApiClient client;
+//    private GoogleApiClient client;
 
     private static final void dbg(String msg) {
         ManagerShareActivity.dbg(msg);
@@ -73,6 +78,7 @@ public class WebArticleActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        mStarTime = System.currentTimeMillis();
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             Window window = getWindow();
@@ -89,59 +95,13 @@ public class WebArticleActivity extends Activity {
             return;
         }
 
-        mImage = (ImageView) findViewById(R.id.image);
-        String image = getIntent().getStringExtra(EXTRA_IMAGE_URL);
-        if (image != null) {
-            Bitmap bm = ManagerShareActivity.getImageFromFile(image);
-            if (bm != null) {
-                mImage.setImageBitmap(bm);
-            } else {
-                mImage.setVisibility(View.GONE);
-            }
-        } else {
-            mImage.setVisibility(View.GONE);
-        }
 
         mHandler = new UIHandler(this);
+        mHandler.sendEmptyMessage(MSG_INIT_VIEW);
 
-        ArticleScrollView v = (ArticleScrollView) findViewById(R.id.article);
-        v.setOnSwipeListener(new ArticleScrollView.OnSwipeListener() {
-            @Override
-            public void onSwipeLeft() {
-                finish();
-                overridePendingTransition(R.anim.activity_left_in, R.anim.activity_right_out);
-            }
-
-            @Override
-            public void onSwipeRight() {
-            }
-        });
-
-        int maxMemory = (int) Runtime.getRuntime().maxMemory();
-        int mCacheSize = maxMemory / 2;
-        ManagerShareActivity.info("Web article cache size: " + mCacheSize);
-
-        mMemoryCache = new LruCache<String, Bitmap>(mCacheSize) {
-            @Override
-            protected int sizeOf(String key, Bitmap value) {
-                return value.getRowBytes() * value.getHeight();
-            }
-
-            @Override
-            protected void entryRemoved(boolean evicted, String key, Bitmap oldValue, Bitmap newValue) {
-                super.entryRemoved(evicted, key, oldValue, newValue);
-                if (evicted && oldValue != null && !oldValue.isRecycled()) {
-                    oldValue.recycle();
-                    oldValue = null;
-                }
-            }
-
-        };
-
-        new Thread(mGetArticalRunnable).start();
         // ATTENTION: This was auto-generated to implement the App Indexing API.
         // See https://g.co/AppIndexing/AndroidStudio for more information.
-        client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
+//        client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
     }
 
     private String getDocumentCacheName(String url) {
@@ -160,6 +120,7 @@ public class WebArticleActivity extends Activity {
     private static final int MSG_GET_WEB_CONTENT_DONE = 0;
     private static final int MSG_GET_WEB_CONTENT_FAILED = 1;
     private static final int MSG_SET_TEXT_SELECTABLE = 2;
+    private static final int MSG_INIT_VIEW = 3;
 
     private static final int SET_TEXT_SELECTABLE_TIME = 1;
 
@@ -169,18 +130,18 @@ public class WebArticleActivity extends Activity {
 
         // ATTENTION: This was auto-generated to implement the App Indexing API.
         // See https://g.co/AppIndexing/AndroidStudio for more information.
-        client.connect();
-        Action viewAction = Action.newAction(
-                Action.TYPE_VIEW, // TODO: choose an action type.
-                "WebArticle Page", // TODO: Define a title for the content shown.
-                // TODO: If you have web page content that matches this app activity's content,
-                // make sure this auto-generated web page URL is correct.
-                // Otherwise, set the URL to null.
-                Uri.parse("http://host/path"),
-                // TODO: Make sure this auto-generated app URL is correct.
-                Uri.parse("android-app://com.peter.parttime.managershare/http/host/path")
-        );
-        AppIndex.AppIndexApi.start(client, viewAction);
+//        client.connect();
+//        Action viewAction = Action.newAction(
+//                Action.TYPE_VIEW, // TODO: choose an action type.
+//                "WebArticle Page", // TODO: Define a title for the content shown.
+//                // TODO: If you have web page content that matches this app activity's content,
+//                // make sure this auto-generated web page URL is correct.
+//                // Otherwise, set the URL to null.
+//                Uri.parse("http://host/path"),
+//                // TODO: Make sure this auto-generated app URL is correct.
+//                Uri.parse("android-app://com.peter.parttime.managershare/http/host/path")
+//        );
+//        AppIndex.AppIndexApi.start(client, viewAction);
     }
 
     @Override
@@ -189,18 +150,18 @@ public class WebArticleActivity extends Activity {
 
         // ATTENTION: This was auto-generated to implement the App Indexing API.
         // See https://g.co/AppIndexing/AndroidStudio for more information.
-        Action viewAction = Action.newAction(
-                Action.TYPE_VIEW, // TODO: choose an action type.
-                "WebArticle Page", // TODO: Define a title for the content shown.
-                // TODO: If you have web page content that matches this app activity's content,
-                // make sure this auto-generated web page URL is correct.
-                // Otherwise, set the URL to null.
-                Uri.parse("http://host/path"),
-                // TODO: Make sure this auto-generated app URL is correct.
-                Uri.parse("android-app://com.peter.parttime.managershare/http/host/path")
-        );
-        AppIndex.AppIndexApi.end(client, viewAction);
-        client.disconnect();
+//        Action viewAction = Action.newAction(
+//                Action.TYPE_VIEW, // TODO: choose an action type.
+//                "WebArticle Page", // TODO: Define a title for the content shown.
+//                // TODO: If you have web page content that matches this app activity's content,
+//                // make sure this auto-generated web page URL is correct.
+//                // Otherwise, set the URL to null.
+//                Uri.parse("http://host/path"),
+//                // TODO: Make sure this auto-generated app URL is correct.
+//                Uri.parse("android-app://com.peter.parttime.managershare/http/host/path")
+//        );
+//        AppIndex.AppIndexApi.end(client, viewAction);
+//        client.disconnect();
     }
 
     private class UIHandler extends Handler {
@@ -215,8 +176,34 @@ public class WebArticleActivity extends Activity {
             WebArticleActivity a = activity.get();
             if (a == null) return;
             switch (msg.what) {
+                case MSG_INIT_VIEW:
+                    mImage = (ImageView) findViewById(R.id.image);
+
+                    String image = getIntent().getStringExtra(EXTRA_IMAGE_URL);
+                    if (image != null) {
+                        Bitmap bm = ManagerShareActivity.getImageFromFile(image);
+                        if (bm != null)
+                            mImage.setImageBitmap(bm);
+                    }
+
+                    ArticleScrollView v = (ArticleScrollView) findViewById(R.id.article);
+                    v.setOnSwipeListener(new ArticleScrollView.OnSwipeListener() {
+                        @Override
+                        public void onSwipeLeft() {
+                            finish();
+                            overridePendingTransition(R.anim.activity_left_in, R.anim.activity_right_out);
+                        }
+
+                        @Override
+                        public void onSwipeRight() {
+                        }
+                    });
+
+                    new Thread(mGetArticalRunnable).start();
+                    break;
                 case MSG_GET_WEB_CONTENT_DONE:
                     //mArticleContentTextView.setMovementMethod(ScrollingMovementMethod.getInstance());
+                    a.findViewById(R.id.progress).setVisibility(View.GONE);
                     a.mArticleContentTextView.setText(
                             Html.fromHtml(
                                     "<html><head>" +
@@ -311,27 +298,56 @@ public class WebArticleActivity extends Activity {
     private Runnable mGetArticalRunnable = new Runnable() {
         @Override
         public void run() {
+            int maxMemory = (int) Runtime.getRuntime().maxMemory();
+            int mCacheSize = maxMemory / 2;
+            ManagerShareActivity.info("Web article cache size: " + mCacheSize);
+            mMemoryCache = new LruCache<String, Bitmap>(mCacheSize) {
+                @Override
+                protected int sizeOf(String key, Bitmap value) {
+                    return value.getRowBytes() * value.getHeight();
+                }
+
+                @Override
+                protected void entryRemoved(boolean evicted, String key, Bitmap oldValue, Bitmap newValue) {
+                    super.entryRemoved(evicted, key, oldValue, newValue);
+                    if (evicted && oldValue != null && !oldValue.isRecycled()) {
+                        oldValue.recycle();
+                        oldValue = null;
+                    }
+                }
+
+            };
             try {
                 mArticle = obtainArticle(mPath);
-                mHandler.sendEmptyMessage(MSG_GET_WEB_CONTENT_DONE);
-                /* TODO: get actual image
+                long delay = RENDER_TIME - (System.currentTimeMillis() - mStarTime);
+                if (delay <= 0)
+                    mHandler.sendEmptyMessage(MSG_GET_WEB_CONTENT_DONE);
+                else
+                    mHandler.sendEmptyMessageDelayed(MSG_GET_WEB_CONTENT_DONE, delay);
+                // TODO: get actual image
                 if (mArticle.image != null) {
                     Bitmap bm = ManagerShareActivity.getImageFromFile(mArticle.image);
                     if (bm == null) {
                         byte[] bitmapBytes = ManagerShareActivity.getUrlBytes(mArticle.image);
                         bm = BitmapFactory.decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
+                        bm = BitmapUtil.scaleWithWidth(bm, mImage.getWidth());
                         ManagerShareActivity.saveBitmapToFile(bm, ManagerShareActivity.getImagePath(mArticle.image));
                     }
-                    final Bitmap finalBm = bm;
-                    mImage.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            mImage.setVisibility(View.VISIBLE);
-                            mImage.setImageBitmap(finalBm);
-                        }
-                    });
+                    mMemoryCache.put("head", bm);
+                    Handler handler = mImage.getHandler();
+                    if (handler != null) {
+                        handler.postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                mImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                                mImage.setImageBitmap(mMemoryCache.get("head"));
+                            }
+                        }, delay >> 1);
+                    } else {
+                        mImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                        mImage.setImageBitmap(mMemoryCache.get("head"));
+                    }
                 }
-                */
             } catch (IOException e) {
                 ManagerShareActivity.error("Can't connect to " + mPath);
                 ManagerShareActivity.error(MiscUtil.getStackTrace(e));
@@ -357,7 +373,7 @@ public class WebArticleActivity extends Activity {
                 } catch (MalformedURLException e) {
                 }
             }
-            ManagerShareActivity.dbg("getDrawable: " + source);
+//            ManagerShareActivity.dbg("getDrawable: " + source);
             if (activity.mMemoryCache.get(source) != null) {
                 urlDrawable.bitmap = activity.mMemoryCache.get(source);
             } else {

@@ -26,6 +26,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:transitionName="content"
                 android:paddingTop="5dp"
                 android:textStyle="bold"
                 android:textColor="@color/carview_font_color"
@@ -54,6 +55,7 @@
         <ImageView
             android:id="@+id/pic"
             android:layout_weight="3"
+            android:transitionName="picture"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:scaleType="fitCenter" />

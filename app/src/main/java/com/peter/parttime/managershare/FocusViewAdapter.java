@@ -9,6 +9,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.support.v4.view.PagerAdapter;
 import android.support.v4.view.ViewPager;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -33,32 +34,38 @@ public class FocusViewAdapter extends PagerAdapter{
         Bitmap bm;
     }
 
+    private View.OnClickListener itemClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+                int position = 0;
+                int size = mViews.size();
+                for (; position < size; position++) {
+                    if (v == mViews.get(position).v) {
+                        break;
+                    }
+                }
+                ManagerShareActivity.dbg("Click: " + position + " @ " + mViews.get(position).paper.mHref);
+                if (position >= 0 && mViews.size() > position) {
+                    ManagerShareActivity.switchToArticle(mActivity,
+                            mViews.get(position).paper.mHref,
+                            mViews.get(position).paper.mPicture,
+                            v.findViewById(R.id.image),
+                            v.findViewById(R.id.title));
+                }
+        }
+    };
+
     public void updateDatas() {
         if (papers.size() != 0) {
             for (ManagerShareActivity.Paper paper : papers) {
-                ImageView v = new ImageView(mActivity);
+                ViewGroup vg = (ViewGroup) LayoutInflater.from(mActivity).inflate(R.layout.focus_view,  null, false);
+                TextView tv = (TextView) vg.findViewById(R.id.title);
+                tv.setText(paper.mTitle);
+                ImageView v = (ImageView) vg.findViewById(R.id.image);
                 v.setImageResource(R.drawable.p1);
-                v.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                v.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        int position = 0;
-                        int size = mViews.size();
-                        for (; position < size; position++) {
-                            if (v == mViews.get(position).v) {
-                                break;
-                            }
-                        }
-                        ManagerShareActivity.dbg("Click: " + position + " @ " + mViews.get(position).paper.mHref);
-                        if (position >= 0 && mViews.size() > position) {
-                            ManagerShareActivity.switchToArticle(mActivity,
-                                    mViews.get(position).paper.mHref,
-                                    mViews.get(position).paper.mPicture);
-                        }
-                    }
-                });
+                vg.setOnClickListener(itemClickListener);
                 VM vm = new VM();
-                vm.v = v;
+                vm.v = vg;
                 vm.bm = null;
                 vm.paper = paper;
                 mViews.add(vm);
@@ -79,9 +86,10 @@ public class FocusViewAdapter extends PagerAdapter{
                             bm = BitmapFactory.decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
                             ManagerShareActivity.saveBitmapToFile(bm, ManagerShareActivity.getImagePath(url));
                         }
-                        ImageView iv = (ImageView) mViews.get(position).v;
+                        ViewGroup vg = (ViewGroup) mViews.get(position).v;
+                        ImageView iv = (ImageView) vg.findViewById(R.id.image);
                         VM vm = new VM();
-                        vm.v = iv;
+                        vm.v = vg;
                         vm.bm = bm;
                         synchronized (mQueue) {
                             mQueue.add(vm);
@@ -94,13 +102,14 @@ public class FocusViewAdapter extends PagerAdapter{
                                             synchronized (mQueue) {
                                                 while (mQueue.size() > 0) {
                                                     VM vm = mQueue.remove();
-                                                    ((ImageView) vm.v).setImageBitmap(vm.bm);
+                                                    ((ImageView) vm.v.findViewById(R.id.image)).setImageBitmap(vm.bm);
                                                 }
                                             }
                                         }
                                     });
                                 } else {
-                                    ((ImageView) vm.v).setImageBitmap(vm.bm);
+                                    //((ImageView) vm.v).setImageBitmap(vm.bm);
+                                    ((ImageView) vm.v.findViewById(R.id.image)).setImageBitmap(vm.bm);
                                 }
                             }
                         }
@@ -112,7 +121,8 @@ public class FocusViewAdapter extends PagerAdapter{
         }).start();
     }
 
-    public FocusViewAdapter(Activity a, final List<ManagerShareActivity.Paper> papers) {
+
+    public FocusViewAdapter(Activity a, List<ManagerShareActivity.Paper> papers) {
         super();
         this.papers = papers;
         mActivity = a;
