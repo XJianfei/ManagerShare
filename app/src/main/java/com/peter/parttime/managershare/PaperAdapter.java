@@ -143,8 +143,8 @@ public class PaperAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             }
             holder.pa.notifyDataSetChanged();
             return;
-        }
-        ManagerShareActivity.Paper p = mPapers.get(position);
+        } // end of header
+        ManagerShareActivity.Paper p = mPapers.get(position - 1);
         holder.mTitleTextView.setText(p.mTitle);
         holder.mDateTextView.setText(p.mDate);
         holder.mSummaryTextView.setText(p.mSummary);
@@ -185,7 +185,6 @@ public class PaperAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         @Override
         public void transformPage(View view, float position) {
             float MIN_SCALE = 0.75f;
-
             int pageWidth = view.getWidth();
             if (position < -1) { // [-Infinity,-1)
                 // This page is way off-screen to the left.

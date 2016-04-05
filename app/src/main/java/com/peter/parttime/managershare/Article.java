@@ -20,6 +20,7 @@ public class Article implements Serializable {
     public String lead;
     public String meta;
     public String path;
+    public String image;
 
     @Override
     public String toString() {

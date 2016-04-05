@@ -4,6 +4,11 @@
     android:paddingStart="15dp"
     android:paddingEnd="15dp"
     android:layout_width="match_parent" android:layout_height="match_parent">
+    <ImageView
+        android:id="@+id/image"
+        android:scaleType="fitXY"
+        android:layout_width="match_parent"
+        android:layout_height="150dp" />
     <com.peter.parttime.managershare.ArticleScrollView
         android:id="@+id/article"
         android:layout_width="match_parent"

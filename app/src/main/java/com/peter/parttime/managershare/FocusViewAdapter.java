@@ -51,7 +51,9 @@ public class FocusViewAdapter extends PagerAdapter{
                         }
                         ManagerShareActivity.dbg("Click: " + position + " @ " + mViews.get(position).paper.mHref);
                         if (position >= 0 && mViews.size() > position) {
-                            ManagerShareActivity.switchToArticle(mActivity, mViews.get(position).paper.mHref);
+                            ManagerShareActivity.switchToArticle(mActivity,
+                                    mViews.get(position).paper.mHref,
+                                    mViews.get(position).paper.mPicture);
                         }
                     }
                 });

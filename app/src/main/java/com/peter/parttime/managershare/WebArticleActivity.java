@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
@@ -12,13 +13,20 @@ import android.os.Message;
 import android.text.Html;
 import android.util.Log;
 import android.util.LruCache;
+import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.ImageView;
 import android.widget.TextView;
+
+import com.google.android.gms.appindexing.Action;
+import com.google.android.gms.appindexing.AppIndex;
+import com.google.android.gms.common.api.GoogleApiClient;
 
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,8 +41,10 @@ import peter.parttime.utils.MiscUtil;
 public class WebArticleActivity extends Activity {
 
     public static final String EXTRA_URL = "extra_url";
+    public static final String EXTRA_IMAGE_URL = "image_url";
 
     private TextView mArticleContentTextView = null;
+    private ImageView mImage = null;
     private Article mArticle;
     /*
     private String mArticleContent = "";
@@ -50,6 +60,15 @@ public class WebArticleActivity extends Activity {
     private static final int SWIPE_RIGHT_VELOCITY = 100;
 
     private static final int MAX_ARTICLE_CACHE_COUNT = 200;
+    /**
+     * ATTENTION: This was auto-generated to implement the App Indexing API.
+     * See https://g.co/AppIndexing/AndroidStudio for more information.
+     */
+    private GoogleApiClient client;
+
+    private static final void dbg(String msg) {
+        ManagerShareActivity.dbg(msg);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,6 +89,19 @@ public class WebArticleActivity extends Activity {
             return;
         }
 
+        mImage = (ImageView) findViewById(R.id.image);
+        String image = getIntent().getStringExtra(EXTRA_IMAGE_URL);
+        if (image != null) {
+            Bitmap bm = ManagerShareActivity.getImageFromFile(image);
+            if (bm != null) {
+                mImage.setImageBitmap(bm);
+            } else {
+                mImage.setVisibility(View.GONE);
+            }
+        } else {
+            mImage.setVisibility(View.GONE);
+        }
+
         mHandler = new UIHandler(this);
 
         ArticleScrollView v = (ArticleScrollView) findViewById(R.id.article);
@@ -85,7 +117,7 @@ public class WebArticleActivity extends Activity {
             }
         });
 
-        int maxMemory = (int)Runtime.getRuntime().maxMemory();
+        int maxMemory = (int) Runtime.getRuntime().maxMemory();
         int mCacheSize = maxMemory / 2;
         ManagerShareActivity.info("Web article cache size: " + mCacheSize);
 
@@ -107,6 +139,9 @@ public class WebArticleActivity extends Activity {
         };
 
         new Thread(mGetArticalRunnable).start();
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
     }
 
     private String getDocumentCacheName(String url) {
@@ -127,11 +162,54 @@ public class WebArticleActivity extends Activity {
     private static final int MSG_SET_TEXT_SELECTABLE = 2;
 
     private static final int SET_TEXT_SELECTABLE_TIME = 1;
+
+    @Override
+    public void onStart() {
+        super.onStart();
+
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        client.connect();
+        Action viewAction = Action.newAction(
+                Action.TYPE_VIEW, // TODO: choose an action type.
+                "WebArticle Page", // TODO: Define a title for the content shown.
+                // TODO: If you have web page content that matches this app activity's content,
+                // make sure this auto-generated web page URL is correct.
+                // Otherwise, set the URL to null.
+                Uri.parse("http://host/path"),
+                // TODO: Make sure this auto-generated app URL is correct.
+                Uri.parse("android-app://com.peter.parttime.managershare/http/host/path")
+        );
+        AppIndex.AppIndexApi.start(client, viewAction);
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        Action viewAction = Action.newAction(
+                Action.TYPE_VIEW, // TODO: choose an action type.
+                "WebArticle Page", // TODO: Define a title for the content shown.
+                // TODO: If you have web page content that matches this app activity's content,
+                // make sure this auto-generated web page URL is correct.
+                // Otherwise, set the URL to null.
+                Uri.parse("http://host/path"),
+                // TODO: Make sure this auto-generated app URL is correct.
+                Uri.parse("android-app://com.peter.parttime.managershare/http/host/path")
+        );
+        AppIndex.AppIndexApi.end(client, viewAction);
+        client.disconnect();
+    }
+
     private class UIHandler extends Handler {
         private WeakReference<WebArticleActivity> activity;
+
         public UIHandler(WebArticleActivity activity) {
             this.activity = new WeakReference<WebArticleActivity>(activity);
         }
+
         @Override
         public void handleMessage(Message msg) {
             WebArticleActivity a = activity.get();
@@ -167,13 +245,14 @@ public class WebArticleActivity extends Activity {
         }
 
     }
+
     private Handler mHandler;
 
     private Article obtainArticle(String url) throws IOException {
         Article article;
         // from local
         String cache = MiscUtil.toMD5(url);
-        ManagerShareActivity.dbg("url: " + url + " cache:" + cache);
+        ManagerShareActivity.dbg("Url: " + url + " cache:" + cache);
         cache = ManagerShareActivity.getWebArticleDir() + cache;
         if (cache != null) {
             try {
@@ -193,6 +272,12 @@ public class WebArticleActivity extends Activity {
         article.content = doc.select(".article > p").outerHtml();
         article.lead = doc.select(".article .post_lead_r").first().text();
         article.meta = doc.select(".post_meta").text();
+        Element e = doc.select(".article img").first();
+        if (e != null) {
+            article.image = e.attr("src");
+        } else {
+            article.image = null;
+        }
         article.path = url;
         if (cache != null) {
             /*
@@ -225,8 +310,25 @@ public class WebArticleActivity extends Activity {
             try {
                 mArticle = obtainArticle(mPath);
                 mHandler.sendEmptyMessage(MSG_GET_WEB_CONTENT_DONE);
+                if (mArticle.image != null) {
+                    Bitmap bm = ManagerShareActivity.getImageFromFile(mArticle.image);
+                    if (bm == null) {
+                        byte[] bitmapBytes = ManagerShareActivity.getUrlBytes(mArticle.image);
+                        bm = BitmapFactory.decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
+                        ManagerShareActivity.saveBitmapToFile(bm, ManagerShareActivity.getImagePath(mArticle.image));
+                    }
+                    final Bitmap finalBm = bm;
+                    mImage.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            mImage.setVisibility(View.VISIBLE);
+                            mImage.setImageBitmap(finalBm);
+                        }
+                    });
+                }
             } catch (IOException e) {
                 ManagerShareActivity.error("Can't connect to " + mPath);
+                ManagerShareActivity.error(MiscUtil.getStackTrace(e));
                 mHandler.sendEmptyMessage(MSG_GET_WEB_CONTENT_FAILED);
             }
         }
@@ -234,9 +336,11 @@ public class WebArticleActivity extends Activity {
 
     private class URLImageParser implements Html.ImageGetter {
         private WebArticleActivity activity;
+
         public URLImageParser(WebArticleActivity activity) {
             this.activity = activity;
         }
+
         @Override
         public Drawable getDrawable(String source) {
             URLDrawable urlDrawable = new URLDrawable(activity);

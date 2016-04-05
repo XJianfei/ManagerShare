@@ -229,11 +229,12 @@ public class ManagerShareActivity extends Activity implements
         mInvalidNetworkWarningToast.show();
     }
 
-    public static void switchToArticle(Activity activity, String uri) {
+    public static void switchToArticle(Activity activity, String uri, String image) {
         Intent intent = new Intent();
         intent.setComponent(
                 new ComponentName(activity, WebArticleActivity.class));
         intent.putExtra(WebArticleActivity.EXTRA_URL, html + "/" + uri);
+        intent.putExtra(WebArticleActivity.EXTRA_IMAGE_URL, image);
         activity.startActivity(intent);
         activity.overridePendingTransition(R.anim.activity_right_in, R.anim.activity_fade_out);
     }
@@ -242,7 +243,7 @@ public class ManagerShareActivity extends Activity implements
             new PaperAdapter.OnItemClickListener() {
         @Override
         public void onItemClickListener(View v, Paper p) {
-            switchToArticle(ManagerShareActivity.this, p.mHref);
+            switchToArticle(ManagerShareActivity.this, p.mHref, p.mPicture);
 
         }
     };
