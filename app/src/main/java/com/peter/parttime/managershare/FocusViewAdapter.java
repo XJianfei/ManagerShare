@@ -49,6 +49,7 @@ public class FocusViewAdapter extends PagerAdapter{
                     ManagerShareActivity.switchToArticle(mActivity,
                             mViews.get(position).paper.mHref,
                             mViews.get(position).paper.mPicture,
+                            mViews.get(position).paper.mTitle,
                             v.findViewById(R.id.image),
                             v.findViewById(R.id.title));
                 }

@@ -3,6 +3,7 @@ package com.peter.parttime.managershare;
 import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
@@ -11,6 +12,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.support.v4.app.ActivityCompat;
 import android.text.Html;
 import android.transition.Transition;
 import android.transition.TransitionManager;
@@ -45,9 +47,11 @@ public class WebArticleActivity extends Activity {
 
     public static final String EXTRA_URL = "extra_url";
     public static final String EXTRA_IMAGE_URL = "image_url";
+    public static final String EXTRA_TITLE = "extra_title";
 
     private TextView mArticleContentTextView = null;
     private ImageView mImage = null;
+    private ArticleScrollView mScrollView = null;
     private Article mArticle;
     private long mStarTime = 0;
     private static final int RENDER_TIME = 1000;
@@ -85,6 +89,18 @@ public class WebArticleActivity extends Activity {
             window.setFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION,
                     WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
         }
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            Window window = getWindow();
+            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS
+                    | WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
+            window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                    | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            window.setStatusBarColor(Color.TRANSPARENT);
+            window.setNavigationBarColor(Color.TRANSPARENT);
+        }
+
         setContentView(R.layout.web_article);
         mArticleContentTextView = (TextView) findViewById(R.id.content);
         mArticleContentTextView.setFitsSystemWindows(true);
@@ -94,6 +110,10 @@ public class WebArticleActivity extends Activity {
             mArticleContentTextView.setText(R.string.invalid_url);
             return;
         }
+        String title = getIntent().getStringExtra(EXTRA_TITLE);
+        if (title == null)
+            title = "";
+        mArticleContentTextView.setText(title);
 
 
         mHandler = new UIHandler(this);
@@ -179,6 +199,8 @@ public class WebArticleActivity extends Activity {
                 case MSG_INIT_VIEW:
                     mImage = (ImageView) findViewById(R.id.image);
 
+                    ArticleScrollView v = (ArticleScrollView) findViewById(R.id.article);
+                    mScrollView = v;
                     String image = getIntent().getStringExtra(EXTRA_IMAGE_URL);
                     if (image != null) {
                         Bitmap bm = ManagerShareActivity.getImageFromFile(image);
@@ -186,12 +208,12 @@ public class WebArticleActivity extends Activity {
                             mImage.setImageBitmap(bm);
                     }
 
-                    ArticleScrollView v = (ArticleScrollView) findViewById(R.id.article);
                     v.setOnSwipeListener(new ArticleScrollView.OnSwipeListener() {
                         @Override
                         public void onSwipeLeft() {
-                            finish();
-                            overridePendingTransition(R.anim.activity_left_in, R.anim.activity_right_out);
+//                            finish();
+                            ActivityCompat.finishAfterTransition(WebArticleActivity.this);
+                            //overridePendingTransition(R.anim.activity_left_in, R.anim.activity_right_out);
                         }
 
                         @Override
@@ -203,7 +225,8 @@ public class WebArticleActivity extends Activity {
                     break;
                 case MSG_GET_WEB_CONTENT_DONE:
                     //mArticleContentTextView.setMovementMethod(ScrollingMovementMethod.getInstance());
-                    a.findViewById(R.id.progress).setVisibility(View.GONE);
+                    a.findViewById(R.id.progress).setVisibility(View.INVISIBLE);
+
                     a.mArticleContentTextView.setText(
                             Html.fromHtml(
                                     "<html><head>" +
@@ -217,6 +240,7 @@ public class WebArticleActivity extends Activity {
                                             "<p>" + a.mArticle.lead + "</p>" +
                                             a.mArticle.content +
                                             "</body></html>", new URLImageParser(a), null));
+                    a.mScrollView.scrollTo(0, 0);
                     break;
                 case MSG_GET_WEB_CONTENT_FAILED:
                     a.mArticleContentTextView.setText(R.string.no_availed_network);
@@ -324,6 +348,7 @@ public class WebArticleActivity extends Activity {
                     mHandler.sendEmptyMessage(MSG_GET_WEB_CONTENT_DONE);
                 else
                     mHandler.sendEmptyMessageDelayed(MSG_GET_WEB_CONTENT_DONE, delay);
+                /*
                 // TODO: get actual image
                 if (mArticle.image != null) {
                     Bitmap bm = ManagerShareActivity.getImageFromFile(mArticle.image);
@@ -333,6 +358,7 @@ public class WebArticleActivity extends Activity {
                         bm = BitmapUtil.scaleWithWidth(bm, mImage.getWidth());
                         ManagerShareActivity.saveBitmapToFile(bm, ManagerShareActivity.getImagePath(mArticle.image));
                     }
+
                     mMemoryCache.put("head", bm);
                     Handler handler = mImage.getHandler();
                     if (handler != null) {
@@ -341,13 +367,16 @@ public class WebArticleActivity extends Activity {
                             public void run() {
                                 mImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
                                 mImage.setImageBitmap(mMemoryCache.get("head"));
+                                mScrollView.scrollTo(0, 0);
                             }
                         }, delay >> 1);
                     } else {
                         mImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
                         mImage.setImageBitmap(mMemoryCache.get("head"));
+                        mScrollView.scrollTo(0, 0);
                     }
                 }
+                */
             } catch (IOException e) {
                 ManagerShareActivity.error("Can't connect to " + mPath);
                 ManagerShareActivity.error(MiscUtil.getStackTrace(e));

@@ -4,13 +4,6 @@
     android:paddingStart="15dp"
     android:paddingEnd="15dp"
     android:layout_width="match_parent" android:layout_height="match_parent">
-    <ImageView
-        android:id="@+id/image"
-        android:layout_marginTop="10dp"
-        android:scaleType="centerCrop"
-        android:transitionName="picture"
-        android:layout_width="match_parent"
-        android:layout_height="150dp" />
     <ProgressBar
         android:id="@+id/progress"
         android:indeterminateOnly="true"
@@ -24,10 +17,24 @@
         android:layout_height="match_parent"
         android:scrollbars="vertical"
         android:fadingEdge="vertical">
-        <TextView
-            style="@style/ArticleTextView"
-            android:id="@+id/content"
+        <RelativeLayout
+            android:orientation="vertical"
             android:layout_width="match_parent"
-            android:layout_height="match_parent" />
+            android:layout_height="wrap_content">
+            <ImageView
+                android:id="@+id/image"
+                android:layout_alignParentTop="true"
+                android:layout_marginTop="0dp"
+                android:scaleType="centerCrop"
+                android:transitionName="picture"
+                android:layout_width="match_parent"
+                android:layout_height="150dp" />
+            <TextView
+                android:layout_below="@id/image"
+                style="@style/ArticleTextView"
+                android:id="@+id/content"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+        </RelativeLayout>
     </com.peter.parttime.managershare.ArticleScrollView>
 </LinearLayout>

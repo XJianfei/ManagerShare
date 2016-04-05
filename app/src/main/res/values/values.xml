@@ -5,6 +5,6 @@
     <color name="article_shadow_color">#B0000000</color>
     <integer name="activity_anim_duration">300</integer>
 
-    <integer name="acticle_text_shadow_value">1</integer>
+    <integer name="acticle_text_shadow_value">0</integer>
 
 </resources>

@@ -233,18 +233,20 @@ public class ManagerShareActivity extends Activity implements
         mInvalidNetworkWarningToast.show();
     }
 
-    public static void switchToArticle(Activity activity, String uri, String image, View v, View t) {
+    public static void switchToArticle(Activity activity, String uri,
+                                       String image, String title,
+                                       View v, View t) {
         Intent intent = new Intent();
         intent.setComponent(
                 new ComponentName(activity, WebArticleActivity.class));
         intent.putExtra(WebArticleActivity.EXTRA_URL, html + "/" + uri);
         intent.putExtra(WebArticleActivity.EXTRA_IMAGE_URL, image);
+        intent.putExtra(WebArticleActivity.EXTRA_TITLE, title);
 
         ActivityCompat.startActivity(activity, intent,
                 ActivityOptionsCompat.makeSceneTransitionAnimation(
                         activity,
-                        Pair.create(v, "picture"),
-                        Pair.create(t, "content")
+                        Pair.create(v, "picture")
                 ).toBundle());
 //        activity.startActivity(intent);
 //        activity.overridePendingTransition(R.anim.activity_right_in, R.anim.activity_fade_out);
@@ -255,6 +257,7 @@ public class ManagerShareActivity extends Activity implements
         @Override
         public void onItemClickListener(View v, Paper p) {
             switchToArticle(ManagerShareActivity.this, p.mHref, p.mPicture,
+                    p.mTitle,
                     v.findViewById(R.id.pic),
                     v.findViewById(R.id.title)
                     );

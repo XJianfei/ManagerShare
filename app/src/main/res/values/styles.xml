@@ -8,7 +8,7 @@
     <style name="ArticleTextView" >
         <item name="android:textIsSelectable">true</item>
         <item name="android:lineSpacingMultiplier">1.2</item>
-        <item name="android:textScaleX">1.1</item>
+        <item name="android:textScaleX">1.0</item>
         <item name="android:autoLink">all</item>
         <item name="android:shadowDx">@integer/acticle_text_shadow_value</item>
         <item name="android:shadowDy">@integer/acticle_text_shadow_value</item>
