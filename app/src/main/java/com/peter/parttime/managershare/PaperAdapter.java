@@ -67,11 +67,9 @@ public class PaperAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
 
     public void updateHeader() {
         if (mFocusAdapter != null) {
-            /*
             if (mFocus.size() > 0) {
                 mFocusTitleView.setText(mFocus.get(0).mTitle);
             }
-            */
             mFocusIndicator.showSize = mFocus.size();
             mFocusAdapter.updateDatas();
             mFocusAdapter.notifyDataSetChanged();
@@ -91,24 +89,26 @@ public class PaperAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             if (holder.pa == null) {
                 PagerAdapter pa = new FocusViewAdapter((Activity)mContext, mFocus);
                 mFocusAdapter = (FocusViewAdapter) pa;
-                //mFocusTitleView = ((ViewHolder) vh).mTitleTextView;
+                mFocusTitleView = ((ViewHolder) vh).mTitleTextView;
                 mFocusIndicator = (SquareIndicator) ((ViewHolder) vh).vg.findViewById(R.id.indicator);
                 mFocusIndicator.showSize = mFocus.size();
-//                if (mFocus.size() > 0) {
-//                    ((ViewHolder) vh).mTitleTextView.setText(mFocus.get(0).mTitle);
-//                }
+                if (mFocus.size() > 0) {
+                    ((ViewHolder) vh).mTitleTextView.setText(mFocus.get(0).mTitle);
+                }
                 vp.setAdapter(pa);
-//                final TextView tv = ((ViewHolder) vh).mTitleTextView;
+                final TextView tv = ((ViewHolder) vh).mTitleTextView;
                 vp.setOnPageChangeListener(new ViewPager.OnPageChangeListener() {
                     @Override
                     public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
 //                        int color = mFocusTitleView.getCurrentTextColor() & 0xffffff;
                         int cur = mFocusIndicator.getPosition();
-                        int alpha;
+//                        int alpha;
                         float xOffset = 0;
+                        float scale = positionOffset;
                         if (position < cur) {
                             xOffset = positionOffset - 1;
 //                            alpha = ((int) (positionOffset * 255) << 24);
+                            scale = 1 - scale;
                         } else {
 //                            alpha = ((int) (255 - positionOffset * 255) << 24);
                             xOffset = positionOffset;
@@ -123,19 +123,19 @@ public class PaperAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                         mFocusIndicator.invalidate();
 //                        int toColor = color | alpha;
 //                        mFocusTitleView.setTextColor(toColor);
+                        mFocusTitleView.setTranslationY(scale * mFocusTitleView.getHeight());
                     }
 
                     @Override
                     public void onPageSelected(int position) {
-//                        if (mFocus.size() > 0 && tv != null) {
-                        if (mFocus.size() > 0) {
+                        if (mFocus.size() > 0 && tv != null) {
+//                        if (mFocus.size() > 0) {
                             mFocusIndicator.setPosition(position);
-                            /*
-                            int color = mFocusTitleView.getCurrentTextColor() | 0xff000000;
-                            mFocusTitleView.setTextColor(color);
+//                            int color = mFocusTitleView.getCurrentTextColor() | 0xff000000;
+//                            mFocusTitleView.setTextColor(color);
                             tv.setText(mFocus.get(position).mTitle);
-                            */
                             ((ManagerShareActivity)mContext).setSwipable(true);
+                            mFocusTitleView.setTranslationY(0);
                         }
                     }
 
