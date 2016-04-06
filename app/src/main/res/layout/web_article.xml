@@ -1,15 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="vertical"
-    android:paddingStart="15dp"
-    android:paddingEnd="15dp"
+    android:paddingStart="0dp"
+    android:paddingEnd="0dp"
     android:layout_width="match_parent" android:layout_height="match_parent">
-    <ProgressBar
-        android:id="@+id/progress"
-        android:indeterminateOnly="true"
-        style="@android:style/Widget.Material.ProgressBar.Horizontal"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
     <com.peter.parttime.managershare.ArticleScrollView
         android:id="@+id/article"
         android:transitionName="content"
@@ -29,10 +23,19 @@
                 android:transitionName="picture"
                 android:layout_width="match_parent"
                 android:layout_height="150dp" />
+            <ProgressBar
+                android:id="@+id/progress"
+                android:indeterminateOnly="true"
+                android:layout_below="@id/image"
+                style="@android:style/Widget.Material.ProgressBar.Horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
             <TextView
                 android:layout_below="@id/image"
                 style="@style/ArticleTextView"
                 android:id="@+id/content"
+                android:layout_marginLeft="10dp"
+                android:layout_marginRight="10dp"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content" />
         </RelativeLayout>
