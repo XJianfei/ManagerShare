@@ -21,6 +21,7 @@ public class Article implements Serializable {
     public String meta;
     public String path;
     public String image;
+    public String comment;
 
     @Override
     public String toString() {

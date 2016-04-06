@@ -147,7 +147,9 @@ public class FocusViewAdapter extends PagerAdapter{
         super();
         this.papers = papers;
         mActivity = a;
-        updateDatas();
+        if (papers.size() > 1) {
+            updateDatas();
+        }
     }
 
     @Override

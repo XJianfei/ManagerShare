@@ -1,6 +1,9 @@
 package com.peter.parttime.managershare;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.animation.ArgbEvaluator;
+import android.animation.TimeInterpolator;
 import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.graphics.Bitmap;
@@ -22,29 +25,37 @@ import android.transition.Transition;
 import android.transition.TransitionManager;
 import android.util.Log;
 import android.util.LruCache;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewAnimationUtils;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.ImageView;
+import android.widget.ListView;
+import android.widget.SimpleAdapter;
 import android.widget.TextView;
 
 import com.google.android.gms.appindexing.Action;
 import com.google.android.gms.appindexing.AppIndex;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.melnykov.fab.FloatingActionButton;
 
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 
 import java.io.File;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.HashMap;
 
 import peter.parttime.utils.BitmapUtil;
 import peter.parttime.utils.MiscUtil;
@@ -63,6 +74,9 @@ public class WebArticleActivity extends Activity {
     private long mStarTime = 0;
     private static final int RENDER_TIME = 1000;
     private boolean mStatusBarShow = false;
+
+    private FloatingActionButton mCommentButton = null;
+    private ListView mCommentList = null;
     /*
     private String mArticleContent = "";
     private String mArticleTitle = "";
@@ -166,9 +180,75 @@ public class WebArticleActivity extends Activity {
             switch (msg.what) {
                 case MSG_INIT_VIEW:
                     mImage = (ImageView) findViewById(R.id.image);
+                    mCommentButton = (FloatingActionButton) findViewById(R.id.comment);
+                    mCommentList = (ListView) findViewById(R.id.commentlist);
+                    mCommentButton.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            int cy = mScrollView.getHeight();
+                            int cx = mImage.getWidth() - mCommentButton.getWidth() / 2;
 
+                            float finalRadius = (float) Math.hypot(cx, cy);
+                            Animator anim =
+                                    ViewAnimationUtils.createCircularReveal(mCommentList, cx, cy, 0, finalRadius);
+                            mCommentList.setVisibility(View.VISIBLE);
+                            mCommentList.setElevation(200);
+                            anim.setDuration(500);
+                            anim.addListener(new AnimatorListenerAdapter() {
+                                @Override
+                                public void onAnimationStart(Animator animation) {
+                                    super.onAnimationStart(animation);
+                                    if (mCommentList.getAdapter() != null)
+                                        return;
+                                    ArrayList<HashMap<String, String>> datas = new ArrayList<HashMap<String, String>>();
+                                    Document doc = Jsoup.parse(mArticle.comment);
+                                    if (doc != null) {
+                                        Elements elements = doc.select("li");
+                                        for (Element e : elements) {
+                                            HashMap<String, String> map = new HashMap<String, String>();
+                                            Element element = e.select(".comment_meta a").first();
+                                            if (element == null) {
+                                                map.put("author", "");
+                                                map.put("date", "");
+                                                map.put("content", "暂无评论");
+                                                datas.add(map);
+                                                break;
+                                            }
+                                            map.put("author", e.select(".comment_meta a").first().text());
+                                            map.put("date", e.select(".comment_meta .dateline").first().text());
+                                            map.put("content", e.select(".comment_con").first().text());
+                                            datas.add(map);
+                                        }
+                                    }
+                                    SimpleAdapter adpater = new SimpleAdapter(WebArticleActivity.this,
+                                            datas,
+                                            R.layout.comment_layout,
+                                            new String[] {"author", "content", "date"},
+                                            new int[] {R.id.author, R.id.content, R.id.date});
+                                    mCommentList.setAdapter(adpater);
+                                }
+
+                                @Override
+                                public void onAnimationEnd(Animator animation) {
+                                    super.onAnimationEnd(animation);
+                                }
+                            });
+                            anim.start();
+                            mCommentButton.hide();
+                            showStatusBar(true);
+                        }
+                    });
                     ArticleScrollView v = (ArticleScrollView) findViewById(R.id.article);
                     mScrollView = v;
+                    View.OnClickListener listener = new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            hideCommentList();
+                        }
+                    };
+                    mImage.setOnClickListener(listener);
+                    mArticleContentTextView.setOnClickListener(listener);
+
                     String image = getIntent().getStringExtra(EXTRA_IMAGE_URL);
                     if (image != null) {
                         Bitmap bm = ManagerShareActivity.getImageFromFile(image);
@@ -196,38 +276,25 @@ public class WebArticleActivity extends Activity {
                         public void onScrollChanged() {
                             Rect out = new Rect();
                             mScrollView.getWindowVisibleDisplayFrame(out);
+
                             final int bHeight = out.top;
                             final int vHeight = mImage.getHeight();
 
-                            Integer colorStatusFrom = 0;
-                            Integer colorStatusTo = 0;
                             int scrollY = mScrollView.getScrollY();
                             if ((bHeight+scrollY) > vHeight) {
                                 if (mStatusBarShow) {
                                     return;
                                 }
                                 mStatusBarShow = true;
-                                colorStatusFrom = Color.TRANSPARENT;
-                                colorStatusTo = 0xff0277bd;
+                                showStatusBar(true);
                             } else {
                                 if (!mStatusBarShow) {
                                     mImage.setTranslationY(scrollY >> 1);
                                     return;
                                 }
                                 mStatusBarShow = false;
-                                colorStatusTo = Color.TRANSPARENT;
-                                colorStatusFrom = 0xff0277bd;
+                                showStatusBar(false);
                             }
-                            ValueAnimator colorStatusAnimation = ValueAnimator.ofObject(new ArgbEvaluator(), colorStatusFrom, colorStatusTo);
-                            colorStatusAnimation.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-                                @Override
-                                public void onAnimationUpdate(ValueAnimator animation) {
-                                    getWindow().setStatusBarColor((Integer)animation.getAnimatedValue());
-                                }
-                            });
-                            colorStatusAnimation.setDuration(500);
-                            colorStatusAnimation.setStartDelay(0);
-                            colorStatusAnimation.start();
 //                            getWindow().setStatusBarColor(0xff0277bd);
 //                            getWindow().setStatusBarColor(Color.TRANSPARENT);
                         }
@@ -265,6 +332,77 @@ public class WebArticleActivity extends Activity {
                     break;
             }
             super.handleMessage(msg);
+        }
+
+    }
+
+    private void showStatusBar(boolean b) {
+        Integer colorStatusFrom = 0;
+        Integer colorStatusTo = 0;
+        if (b) {
+            colorStatusFrom = Color.TRANSPARENT;
+            colorStatusTo = 0xff0277bd;
+        } else {
+            colorStatusTo = Color.TRANSPARENT;
+            colorStatusFrom = 0xff0277bd;
+        }
+
+        ValueAnimator colorStatusAnimation = ValueAnimator.ofObject(new ArgbEvaluator(), colorStatusFrom, colorStatusTo);
+        colorStatusAnimation.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                getWindow().setStatusBarColor((Integer)animation.getAnimatedValue());
+            }
+        });
+        colorStatusAnimation.setDuration(500);
+        colorStatusAnimation.setStartDelay(0);
+        colorStatusAnimation.start();
+    }
+
+
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            if (mCommentList.getVisibility() == View.VISIBLE) {
+                hideCommentList();
+                return true;
+            } else {
+                ActivityCompat.finishAfterTransition(this);
+                return true;
+            }
+        }
+        return super.onKeyUp(keyCode, event);
+    }
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            if (mCommentList.getVisibility() == View.VISIBLE) {
+                return true;
+            }
+        }
+        return super.onKeyUp(keyCode, event);
+    }
+
+    private void hideCommentList() {
+        if (mCommentList.getVisibility() == View.VISIBLE) {
+            int cy = mScrollView.getHeight();
+            int cx = mImage.getWidth() - mCommentButton.getWidth() / 2;
+            float initialRadius = (float) Math.hypot(cx, cy);
+
+            Animator anim =
+                    ViewAnimationUtils.createCircularReveal(mCommentList, cx, cy, initialRadius, 0);
+
+            anim.addListener(new AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    super.onAnimationEnd(animation);
+                    mCommentList.setVisibility(View.GONE);
+                    mCommentButton.show();
+                }
+            });
+            anim.setDuration(500);
+            anim.start();
+            showStatusBar(mStatusBarShow);
         }
 
     }
@@ -310,6 +448,7 @@ public class WebArticleActivity extends Activity {
             article.image = null;
         }
         article.path = url;
+        article.comment = doc.select(".comment_list").first().outerHtml();
         if (cache != null) {
             /*
             File dir = new File(cache).getParentFile();

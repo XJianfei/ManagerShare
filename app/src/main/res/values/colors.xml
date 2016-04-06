@@ -1,3 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <color name="main">#0277BD</color>
+    <color name="main_press">#00b0ff</color>
 </resources>

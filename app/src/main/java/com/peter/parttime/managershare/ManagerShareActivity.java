@@ -12,10 +12,12 @@ import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.net.ConnectivityManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
+import android.os.Process;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.ActivityOptionsCompat;
 import android.support.v4.app.NotificationCompat;
@@ -36,6 +38,10 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.google.android.gms.appindexing.Action;
+import com.google.android.gms.appindexing.AppIndex;
+import com.google.android.gms.common.api.GoogleApiClient;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -73,16 +79,26 @@ public class ManagerShareActivity extends Activity implements
     private static final long MAX_CACHE_SIZE = 40 * 1024 * 1024;
     private static final long TIME_CLEAR_CACHE = 5 * 60 * 60 * 1000;
     public static final String APP_DIR = Environment.getExternalStorageDirectory().getAbsolutePath() + "/" + APP_NAME;
+    /**
+     * ATTENTION: This was auto-generated to implement the App Indexing API.
+     * See https://g.co/AppIndexing/AndroidStudio for more information.
+     */
+    private GoogleApiClient client;
+
     public static final String getWebArticleDir() {
         return APP_DIR + "/article/";
     }
+
     public static final String getWebNewsDir() {
         return APP_DIR + "/news/";
     }
+
     public static final String getWebImagesDir() {
         return APP_DIR + "/images/";
     }
+
     public static final String NEWS_JSON_PATH = getWebNewsDir() + "news.json";
+    public static final String FOCUS_JSON_PATH = getWebNewsDir() + "focus.json";
     private static final int MAX_CACHE_NEWS = 30;
     private static final int HOME_PAGE_NEWS_COUNT = 20;
     private static final int CONNECT_TIME_OUT = 3000;
@@ -115,7 +131,7 @@ public class ManagerShareActivity extends Activity implements
 
     private SwipeRefreshLayout mSwipeLayout;
     private RecyclerView mRecyclerView;
-    private com.peter.parttime.managershare.PaperAdapter mPaperAdapter;
+    private PaperAdapter mPaperAdapter;
     private LinearLayoutManager mLayoutManager;
     private List<Paper> mPapers = new CopyOnWriteArrayList<Paper>();
     private List<Paper> mFocusPapers = new CopyOnWriteArrayList<Paper>();
@@ -131,8 +147,13 @@ public class ManagerShareActivity extends Activity implements
     private TextView mHeaderHintTextView = null;
 
 
-    public boolean isLoading() { return mLoading;}
-    private void setLoading(boolean l) { mLoading = l;}
+    public boolean isLoading() {
+        return mLoading;
+    }
+
+    private void setLoading(boolean l) {
+        mLoading = l;
+    }
 
     private ThumbnailDownloader<ImageView> mThumbnailDownloader;
 
@@ -141,9 +162,11 @@ public class ManagerShareActivity extends Activity implements
     public static void dbg(String msg) {
         Log.d(TAG, "" + msg);
     }
+
     public static void error(String msg) {
         Log.e(TAG, "" + msg);
     }
+
     public static void info(String msg) {
         Log.i(TAG, "" + msg);
     }
@@ -158,6 +181,7 @@ public class ManagerShareActivity extends Activity implements
 
 
     private long mLastScrollTime = 0;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -198,17 +222,22 @@ public class ManagerShareActivity extends Activity implements
         startService(new Intent(ManagerShareActivity.this, UpdateNewsService.class));
 
         scheduleClearCacheTask();
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
     }
 
     private final void scheduleClearCacheTask() {
         new Timer().schedule(new ClearCacheTask(), TIME_CLEAR_CACHE);
     }
+
     public void setSwipable(boolean b) {
         mSwipeLayout.setEnabled(b);
     }
 
     private static final int HEADER_HINT_TYPE_INFO = 0;
     private static final int HEADER_HINT_TYPE_WARNING = 1;
+
     private void showHeaderHint(String msg, int type) {
         mHeaderHintTextView.setVisibility(View.VISIBLE);
         mHeaderHintTextView.setText(msg);
@@ -222,11 +251,13 @@ public class ManagerShareActivity extends Activity implements
                 break;
         }
     }
+
     private void hideHeaderHint() {
         mHeaderHintTextView.setVisibility(View.GONE);
     }
 
     private Toast mInvalidNetworkWarningToast = null;//Toast.makeText(this, getString(R.string.no_availed_network), Toast.LENGTH_SHORT);
+
     private void showInvalidNetworkWarning() {
         if (mInvalidNetworkWarningToast == null)
             mInvalidNetworkWarningToast = Toast.makeText(this, getString(R.string.no_availed_network), Toast.LENGTH_SHORT);
@@ -254,18 +285,19 @@ public class ManagerShareActivity extends Activity implements
 
     private PaperAdapter.OnItemClickListener mOnItemClickListener =
             new PaperAdapter.OnItemClickListener() {
-        @Override
-        public void onItemClickListener(View v, Paper p) {
-            switchToArticle(ManagerShareActivity.this, p.mHref, p.mPicture,
-                    p.mTitle,
-                    v.findViewById(R.id.pic),
-                    v
+                @Override
+                public void onItemClickListener(View v, Paper p) {
+                    switchToArticle(ManagerShareActivity.this, p.mHref, p.mPicture,
+                            p.mTitle,
+                            v.findViewById(R.id.pic),
+                            v
                     );
 
-        }
-    };
+                }
+            };
 
     private Thread mUpdateHomePageThread = null;
+
     @Override
     public void onRefresh() {
         if (!NetworkUtil.isNetworkAvailed(mConnectivityManager)) {
@@ -276,6 +308,7 @@ public class ManagerShareActivity extends Activity implements
     }
 
     private Thread mGetNextPageThread = null;
+
     private void startGetNextPage() {
         if (mGetNextPageThread == null || !mGetNextPageThread.isAlive()) {
             mGetNextPageThread = new Thread(mGetNextPageRunnable);
@@ -283,6 +316,7 @@ public class ManagerShareActivity extends Activity implements
         if (!mGetNextPageThread.isAlive())
             mGetNextPageThread.start();
     }
+
     private void refreshHomePage(boolean bg) {
         mUpdateHomePageRunnable.isBackground = bg;
         if (mUpdateHomePageThread == null || !mUpdateHomePageThread.isAlive()) {
@@ -291,6 +325,7 @@ public class ManagerShareActivity extends Activity implements
         if (!mUpdateHomePageThread.isAlive())
             mUpdateHomePageThread.start();
     }
+
     private static final int REGULAR_UPDATE_HOME_TIME = 30 * 60 * 1000;
 //    private static final int REGULAR_UPDATE_HOME_TIME =  5 * 1000;
 
@@ -304,140 +339,201 @@ public class ManagerShareActivity extends Activity implements
     private static final int MSG_REMOVE_NEWS = 5;
     private static final int MSG_INITIALIZE_LATER = 6;
     private static final int MSG_UPDATE_FOCUS_VIEW = 7;
+    private static final int MSG_READ_FOCUS_VIEW = 8;
+
+    @Override
+    public void onStart() {
+        super.onStart();
+
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        client.connect();
+        Action viewAction = Action.newAction(
+                Action.TYPE_VIEW, // TODO: choose an action type.
+                "ManagerShare Page", // TODO: Define a title for the content shown.
+                // TODO: If you have web page content that matches this app activity's content,
+                // make sure this auto-generated web page URL is correct.
+                // Otherwise, set the URL to null.
+                Uri.parse("http://host/path"),
+                // TODO: Make sure this auto-generated app URL is correct.
+                Uri.parse("android-app://com.peter.parttime.managershare/http/host/path")
+        );
+        AppIndex.AppIndexApi.start(client, viewAction);
+    }
 
 
-   private static class UIHandler extends Handler {
-       private final WeakReference<ManagerShareActivity> activity;
+    private static class UIHandler extends Handler {
+        private final WeakReference<ManagerShareActivity> activity;
 
-       public UIHandler(ManagerShareActivity activity) {
-           this.activity = new WeakReference<ManagerShareActivity>(activity);
-       }
+        public UIHandler(ManagerShareActivity activity) {
+            this.activity = new WeakReference<ManagerShareActivity>(activity);
+        }
 
-       @Override
-       public void handleMessage(Message msg) {
-           final ManagerShareActivity a = activity.get();
-           if (a != null) {
-               switch (msg.what) {
-                   case MSG_REMOVE_NEWS:
-                       a.mPaperAdapter.notifyItemRangeRemoved(msg.arg1, msg.arg2 - msg.arg1);
-                       info("remove news");
-                       break;
-                   case MSG_CONNECT_TIME_OUT:
-                       a.mUpdatingProgressBar.setVisibility(View.GONE);
-                       a.mLoadingMoreProgressBar.setVisibility(View.GONE);
-                       a.mSwipeLayout.setRefreshing(false);
-                       break;
-                   case MSG_LOAD_NEXT_PAGE_DONE:
-                       a.mPaperAdapter.notifyItemRangeChanged(msg.arg1, msg.arg2 - msg.arg1);
-                       a.setLoading(false);
-                       a.mLoadingMoreProgressBar.setVisibility(View.GONE);
-                       a.mUpdatingProgressBar.setVisibility(View.GONE);
-                       break;
-                   case MSG_UPDATE_HOME_PAGE_DONE:
-                       a.mPaperAdapter.notifyDataSetChanged();
-                       a.mSwipeLayout.setRefreshing(false);
-                       a.mUpdatingProgressBar.setVisibility(View.GONE);
-                       break;
-                   case MSG_SHOW_LAST_CONTENTS_HINT:
-                       Toast.makeText(a,
-                               R.string.update_to_date, Toast.LENGTH_SHORT).show();;
-                       a.mSwipeLayout.setRefreshing(false);
-                       break;
-                   case MSG_INITIALIZE_LATER:
-                       a.mThumbnailDownloader = new ThumbnailDownloader<ImageView>(new Handler());
-                       a.mThumbnailDownloader.setListener(new ThumbnailDownloader.Listener<ImageView>() {
-                           @Override
-                           public void onThumbnailDownloaded(ImageView imageView,
-                                                             Bitmap bitmap) {
-                               imageView.setImageBitmap(bitmap);
-                           }
-                       });
+        @Override
+        public void handleMessage(Message msg) {
+            final ManagerShareActivity a = activity.get();
+            if (a != null) {
+                switch (msg.what) {
+                    case MSG_REMOVE_NEWS:
+                        a.mPaperAdapter.notifyItemRangeRemoved(msg.arg1, msg.arg2 - msg.arg1);
+                        info("remove news");
+                        break;
+                    case MSG_CONNECT_TIME_OUT:
+                        a.mUpdatingProgressBar.setVisibility(View.GONE);
+                        a.mLoadingMoreProgressBar.setVisibility(View.GONE);
+                        a.mSwipeLayout.setRefreshing(false);
+                        break;
+                    case MSG_LOAD_NEXT_PAGE_DONE:
+                        a.mPaperAdapter.notifyItemRangeChanged(msg.arg1, msg.arg2 - msg.arg1);
+                        a.setLoading(false);
+                        a.mLoadingMoreProgressBar.setVisibility(View.GONE);
+                        a.mUpdatingProgressBar.setVisibility(View.GONE);
+                        break;
+                    case MSG_UPDATE_HOME_PAGE_DONE:
+                        a.mPaperAdapter.notifyDataSetChanged();
+                        a.mSwipeLayout.setRefreshing(false);
+                        a.mUpdatingProgressBar.setVisibility(View.GONE);
+                        break;
+                    case MSG_SHOW_LAST_CONTENTS_HINT:
+                        Toast.makeText(a,
+                                R.string.update_to_date, Toast.LENGTH_SHORT).show();
+                        ;
+                        a.mSwipeLayout.setRefreshing(false);
+                        break;
+                    case MSG_INITIALIZE_LATER:
+                        a.mThumbnailDownloader = new ThumbnailDownloader<ImageView>(new Handler());
+                        a.mThumbnailDownloader.setListener(new ThumbnailDownloader.Listener<ImageView>() {
+                            @Override
+                            public void onThumbnailDownloaded(ImageView imageView,
+                                                              Bitmap bitmap) {
+                                imageView.setImageBitmap(bitmap);
+                            }
+                        });
 
-                       a.mRecyclerView.setLayoutManager(a.mLayoutManager);
-                       a.mRecyclerView.setItemAnimator(new DefaultItemAnimator());
+                        a.mRecyclerView.setLayoutManager(a.mLayoutManager);
+                        a.mRecyclerView.setItemAnimator(new DefaultItemAnimator());
 
-                       a.mRecyclerView.setOnScrollListener(new RecyclerView.OnScrollListener() {
-                           @Override
-                           public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
-                               super.onScrollStateChanged(recyclerView, newState);
-                           }
+                        a.mRecyclerView.setOnScrollListener(new RecyclerView.OnScrollListener() {
+                            @Override
+                            public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
+                                super.onScrollStateChanged(recyclerView, newState);
+                            }
 
-                           @Override
-                           public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-                               super.onScrolled(recyclerView, dx, dy);
-                               if (a.isLoading()) return;
-                               if (!NetworkUtil.isNetworkAvailed(a.mConnectivityManager)) {
-                                   return;
-                               }
+                            @Override
+                            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+                                super.onScrolled(recyclerView, dx, dy);
+                                if (a.isLoading()) return;
+                                if (!NetworkUtil.isNetworkAvailed(a.mConnectivityManager)) {
+                                    return;
+                                }
 
-                               int last = a.mLayoutManager.findLastVisibleItemPosition();
-                               int count = a.mLayoutManager.getItemCount();
+                                int last = a.mLayoutManager.findLastVisibleItemPosition();
+                                int count = a.mLayoutManager.getItemCount();
 
-                               if ((last + 1) == count && dy > 0) {
-                                   dbg("Loading more");
-                                   a.setLoading(true);
-                                   a.mCurrentPage++;
-                                   a.mLoadingMoreProgressBar.setVisibility(View.VISIBLE);
+                                if ((last + 1) == count && dy > 0) {
+                                    dbg("Loading more");
+                                    a.setLoading(true);
+                                    a.mCurrentPage++;
+                                    a.mLoadingMoreProgressBar.setVisibility(View.VISIBLE);
 
-                                   a.startGetNextPage();
-                               }
-                           }
-                       });
+                                    a.startGetNextPage();
+                                }
+                            }
+                        });
 
-                       a.mRecyclerView.setScrollBarSize(30);
-                       a.mRecyclerView.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
+                        a.mRecyclerView.setScrollBarSize(30);
+                        a.mRecyclerView.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
 
-                       a.mLoadingMoreProgressBar = (ProgressBar) a.findViewById(R.id.loadingprogressbar);
+                        a.mLoadingMoreProgressBar = (ProgressBar) a.findViewById(R.id.loadingprogressbar);
 
-                       a.mSwipeLayout = (SwipeRefreshLayout) a.findViewById(R.id.swipe_container);
-                       a.mSwipeLayout.setOnRefreshListener(a);
+                        a.mSwipeLayout = (SwipeRefreshLayout) a.findViewById(R.id.swipe_container);
+                        a.mSwipeLayout.setOnRefreshListener(a);
 
-                       a.mThumbnailDownloader.start();
-                       a.mThumbnailDownloader.getLooper();
+                        a.mThumbnailDownloader.start();
+                        a.mThumbnailDownloader.getLooper();
 
-                       a.mPaperAdapter = new PaperAdapter(a, a.mPapers, a.mFocusPapers, a.mThumbnailDownloader);
-                       a.mPaperAdapter.setOnItemClickListener(a.mOnItemClickListener);
 
-                       try {
-                           List<Paper> papers = a.parseJsonForPapers(MiscUtil.readFromFile(NEWS_JSON_PATH));
-                           if (!papers.isEmpty()) {
-                               int size = papers.size() > HOME_PAGE_NEWS_COUNT ? HOME_PAGE_NEWS_COUNT : papers.size() - 1;
-                               a.mPapers.addAll(papers.subList(0, size));
-                               a.mPaperAdapter.notifyItemRangeChanged(0, HOME_PAGE_NEWS_COUNT);
-                           }
-                       } catch (JSONException e) {
-                           error("read news from json:" + MiscUtil.getStackTrace(e));
-                       } catch (IOException e) {
-                           error("read news from json:" + MiscUtil.getStackTrace(e));
-                       }
+                        try {
+                            List<Paper> papers = a.parseJsonForPapers(MiscUtil.readFromFile(NEWS_JSON_PATH));
+                            if (!papers.isEmpty()) {
+                                int size = papers.size() > HOME_PAGE_NEWS_COUNT ? HOME_PAGE_NEWS_COUNT : papers.size() - 1;
+                                a.mPapers.addAll(papers.subList(0, size));
+//                               a.mPaperAdapter.notifyItemRangeChanged(0, HOME_PAGE_NEWS_COUNT);
+                            }
+                        } catch (JSONException e) {
+                            error("read news from json:" + MiscUtil.getStackTrace(e));
+                        } catch (IOException e) {
+                            error("read news from json:" + MiscUtil.getStackTrace(e));
+                        }
+                        a.mPaperAdapter = new PaperAdapter(a, a.mPapers, a.mFocusPapers, a.mThumbnailDownloader);
+                        a.mPaperAdapter.setOnItemClickListener(a.mOnItemClickListener);
 
-                       a.mRecyclerView.setAdapter(a.mPaperAdapter);
-                       break;
-                   case MSG_UPDATE_FOCUS_VIEW:
-                       a.mPaperAdapter.updateHeader();
-                       a.mPaperAdapter.notifyItemRangeChanged(0, 1);
-                       break;
+                        a.mRecyclerView.setAdapter(a.mPaperAdapter);
+                        new Thread(new Runnable() {
+                            @Override
+                            public void run() {
+                                synchronized (a.mFocusPapers) {
+                                    try {
+                                        dbg("parse focus 2");
+                                        a.mFocusPapers.clear();
+                                        a.mFocusPapers.addAll(parseJsonForFocus(MiscUtil.readFromFile(FOCUS_JSON_PATH)));
+                                        a.mPaperAdapter.updateHeader();
+                                        dbg("send update focus view");
+                                        sendEmptyMessage(MSG_UPDATE_FOCUS_VIEW);
+                                    } catch (JSONException e) {
+                                        error(MiscUtil.getStackTrace(e));
+                                    } catch (IOException e) {
+                                        error(MiscUtil.getStackTrace(e));
+                                    }
+                                }
+                            }
+                        }).start();
+                        break;
+                    case MSG_UPDATE_FOCUS_VIEW:
+                        dbg("update view");
+                        synchronized (a.mFocusPapers) {
+                            a.mPaperAdapter.updateHeader();
+                            a.mPaperAdapter.notifyItemRangeChanged(0, 1);
+                        }
+                        break;
 
-                   default:
-                       break;
-               }
-           }
-       }
-   }
+                    default:
+                        break;
+                }
+            }
+        }
+    }
 
     private static Handler mHandler;
 
     private boolean isTopTask() {
         final ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
         List<ActivityManager.RunningAppProcessInfo> apps = am.getRunningAppProcesses();
-        return (apps.get(0).pid == android.os.Process.myPid());
+        return (apps.get(0).pid == Process.myPid());
     }
 
     private boolean mIsShowing = true;
+
     @Override
     protected void onStop() {
         super.onStop();
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        Action viewAction = Action.newAction(
+                Action.TYPE_VIEW, // TODO: choose an action type.
+                "ManagerShare Page", // TODO: Define a title for the content shown.
+                // TODO: If you have web page content that matches this app activity's content,
+                // make sure this auto-generated web page URL is correct.
+                // Otherwise, set the URL to null.
+                Uri.parse("http://host/path"),
+                // TODO: Make sure this auto-generated app URL is correct.
+                Uri.parse("android-app://com.peter.parttime.managershare/http/host/path")
+        );
+        AppIndex.AppIndexApi.end(client, viewAction);
         mIsShowing = false;
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        client.disconnect();
     }
 
     @Override
@@ -453,7 +549,7 @@ public class ManagerShareActivity extends Activity implements
         dbg("parseHomeMainPager");
         List<Paper> news = new CopyOnWriteArrayList<Paper>();
         Elements papers = doc.select(".main_left .focus .slide a");
-        for (Element paper: papers) {
+        for (Element paper : papers) {
             String href = paper.attr("href");
             String title = paper.attr("title");
             Element e = paper.select(".slide_thumbnail img").first();
@@ -471,16 +567,20 @@ public class ManagerShareActivity extends Activity implements
                     "date",
                     href));
         }
-        mFocusPapers.clear();
-        mFocusPapers.addAll(news);
+        synchronized (mFocusPapers) {
+            mFocusPapers.clear();
+            mFocusPapers.addAll(news);
+        }
+        saveFocusToCache();
         mHandler.sendEmptyMessage(MSG_UPDATE_FOCUS_VIEW);
         return news;
     }
-//    private static int reservePaperCount = 3;
+
+    //    private static int reservePaperCount = 3;
     static List<Paper> parseDocument(Document doc, String lastPaper) {
         List<Paper> news = new CopyOnWriteArrayList<Paper>();
         Elements papers = doc.select(".post_list li");
-        for (Element paper: papers) {
+        for (Element paper : papers) {
 //            if (reservePaperCount-- > 0) continue;
 
             String href = paper.select("h3 a").attr("href");
@@ -502,6 +602,7 @@ public class ManagerShareActivity extends Activity implements
         }
         return news;
     }
+
     static Document getWebDocument(int page) throws IOException {
         String url = html;
         if (page > 1)
@@ -513,6 +614,7 @@ public class ManagerShareActivity extends Activity implements
         Document doc = conn.get();
         return doc;
     }
+
     private Document getWebDocument() throws IOException {
         return getWebDocument(mCurrentPage);
     }
@@ -523,6 +625,7 @@ public class ManagerShareActivity extends Activity implements
         saveNewsToCache();
         mHandler.sendEmptyMessage(MSG_UPDATE_HOME_PAGE_DONE);
     }
+
     private void addAllNews(int position, List<Paper> news) {
         synchronized (mPapers) {
             mPapers.addAll(position, news);
@@ -531,13 +634,14 @@ public class ManagerShareActivity extends Activity implements
         }
         mHandler.sendEmptyMessage(MSG_UPDATE_HOME_PAGE_DONE);
     }
+
     private void addAllNews(List<Paper> news) {
         synchronized (mPapers) {
             int count = mPapers.size();
             mPapers.addAll(news);
             if (count < HOME_PAGE_NEWS_COUNT)
                 saveNewsToCache();
-            }
+        }
         Message msg = mHandler.obtainMessage(MSG_LOAD_NEXT_PAGE_DONE,
                 mPaperAdapter.getItemCount() - news.size(), mPaperAdapter.getItemCount() - 1);
         mHandler.sendMessage(msg);
@@ -551,14 +655,20 @@ public class ManagerShareActivity extends Activity implements
         writeJsonToFile(papersToJson(mPapers.subList(0, count - 1)), NEWS_JSON_PATH);
     }
 
+    private void saveFocusToCache() {
+        writeJsonToFile(focusToJson(mFocusPapers), FOCUS_JSON_PATH);
+    }
+
     private void removeNewData(int position) {
         mPapers.remove(position);
     }
+
     private void removeNew(int position) {
         removeNewData(position);
         Message msg = mHandler.obtainMessage(MSG_REMOVE_NEWS, position, 1);
         mHandler.sendMessage(msg);
     }
+
     private void removeNews(int start, int end) {
         if (start >= mPapers.size())
             start = mPapers.size() - 1;
@@ -598,9 +708,11 @@ public class ManagerShareActivity extends Activity implements
 
     private UpdateHomePageRunnable mUpdateHomePageRunnable = new UpdateHomePageRunnable();
     private boolean getFromLocal = true;
+
     private class UpdateHomePageRunnable implements Runnable {
 
         public boolean isBackground = false;
+
         @Override
         public void run() {
             List<Paper> news = new CopyOnWriteArrayList<Paper>();
@@ -635,6 +747,7 @@ public class ManagerShareActivity extends Activity implements
 
     private Runnable mGetNextPageRunnable = new Runnable() {
         public boolean TEST_EMPTY_VIEW = false;
+
         @Override
         public void run() {
             if (TEST_EMPTY_VIEW) {
@@ -750,8 +863,8 @@ public class ManagerShareActivity extends Activity implements
         String mDate;
         String mHref;
 
-        public Paper (String title, String summary, String picture,
-                      String date, String href) {
+        public Paper(String title, String summary, String picture,
+                     String date, String href) {
             mTitle = title;
             mSummary = summary;
             mPicture = picture;
@@ -771,6 +884,28 @@ public class ManagerShareActivity extends Activity implements
     public static final String JSON_NEWS_PICTURE = "picture";
     public static final String JSON_NEWS_DATE = "date";
     public static final String JSON_NEWS_HREF = "href";
+    public static final String JSON_FOCUS_ARRAY = "focus";
+
+    static JSONObject focusToJson(List<Paper> papers) {
+        JSONObject json = new JSONObject();
+        JSONArray array = null;
+        try {
+            array = new JSONArray();
+            JSONObject obj;
+            for (Paper paper : papers) {
+                obj = new JSONObject();
+                obj.put(JSON_NEWS_TITLE, paper.mTitle);
+                obj.put(JSON_NEWS_PICTURE, paper.mPicture);
+                obj.put(JSON_NEWS_HREF, paper.mHref);
+                array.put(obj);
+            }
+            json.put(JSON_FOCUS_ARRAY, array);
+        } catch (JSONException e) {
+            error("papersToJson failed: " + MiscUtil.getStackTrace(e));
+        }
+        return json;
+    }
+
     static JSONObject papersToJson(List<Paper> papers) {
         JSONObject json = new JSONObject();
         JSONArray array = null;
@@ -792,6 +927,29 @@ public class ManagerShareActivity extends Activity implements
         }
         return json;
     }
+
+    static List<Paper> parseJsonForFocus(String content) throws JSONException {
+        if (content == null) return null;
+
+        List<Paper> papers = new CopyOnWriteArrayList<Paper>();
+        Paper paper;
+        JSONObject json = new JSONObject(content);
+        JSONArray news = json.getJSONArray(JSON_FOCUS_ARRAY);
+        int length = news.length();
+        String title, summary, picture, date, href;
+        for (int i = 0; i < length; i++) {
+            JSONObject obj = news.getJSONObject(i);
+            title = obj.getString(JSON_NEWS_TITLE);
+            summary = "";
+            picture = obj.getString(JSON_NEWS_PICTURE);
+            date = "";
+            href = obj.getString(JSON_NEWS_HREF);
+            paper = new Paper(title, summary, picture, date, href);
+            papers.add(paper);
+        }
+        return papers;
+    }
+
     static List<Paper> parseJsonForPapers(String content) throws JSONException {
         if (content == null) return null;
 
@@ -828,9 +986,11 @@ public class ManagerShareActivity extends Activity implements
     public static final String getImagePath(String url) {
         return getWebImagesDir() + MiscUtil.toMD5(url);
     }
+
     public static final Bitmap getImageFromFile(String url) {
         return BitmapUtil.getBitmapFromFile(getImagePath(url));
     }
+
     public static final void saveBitmapToFile(Bitmap bm, String path) {
         try {
             BitmapUtil.saveBitmapToFile(bm, path);
@@ -851,7 +1011,7 @@ public class ManagerShareActivity extends Activity implements
                 int count = size >> 2;
                 if (size > 1) {
                     MiscUtil.sortFileByLastModified(files);
-                    for (int i = 0;i < count; i++) {
+                    for (int i = 0; i < count; i++) {
                         files[size - 1 - i].delete();
                     }
                 }
@@ -862,7 +1022,7 @@ public class ManagerShareActivity extends Activity implements
                 count = size >> 2;
                 if (size > 1) {
                     MiscUtil.sortFileByLastModified(files);
-                    for (int i = 0;i < count; i++) {
+                    for (int i = 0; i < count; i++) {
                         files[size - 1 - i].delete();
                     }
                 }
