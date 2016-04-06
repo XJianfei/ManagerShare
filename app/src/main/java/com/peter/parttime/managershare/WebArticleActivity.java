@@ -1,9 +1,12 @@
 package com.peter.parttime.managershare;
 
+import android.animation.ArgbEvaluator;
+import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
@@ -19,7 +22,10 @@ import android.transition.Transition;
 import android.transition.TransitionManager;
 import android.util.Log;
 import android.util.LruCache;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.ImageView;
@@ -56,6 +62,7 @@ public class WebArticleActivity extends Activity {
     private Article mArticle;
     private long mStarTime = 0;
     private static final int RENDER_TIME = 1000;
+    private boolean mStatusBarShow = false;
     /*
     private String mArticleContent = "";
     private String mArticleTitle = "";
@@ -86,14 +93,10 @@ public class WebArticleActivity extends Activity {
         }
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             Window window = getWindow();
-            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS
-                    | WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
             window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                    | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                     | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
             window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
             window.setStatusBarColor(Color.TRANSPARENT);
-            window.setNavigationBarColor(Color.TRANSPARENT);
             window.setEnterTransition(new Explode());
         }
 
@@ -183,6 +186,44 @@ public class WebArticleActivity extends Activity {
 
                         @Override
                         public void onSwipeRight() {
+//                            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+                        }
+                    });
+                    mScrollView.getViewTreeObserver().addOnScrollChangedListener(new ViewTreeObserver.OnScrollChangedListener() {
+                        @Override
+                        public void onScrollChanged() {
+                            Rect out = new Rect();
+                            mScrollView.getWindowVisibleDisplayFrame(out);
+                            final int bHeight = out.top;
+                            final int vHeight = mImage.getHeight();
+
+                            Integer colorStatusFrom = 0;
+                            Integer colorStatusTo = 0;
+                            if ((bHeight+mScrollView.getScrollY()) > vHeight) {
+                                if (mStatusBarShow)
+                                    return;
+                                mStatusBarShow = true;
+                                colorStatusFrom = Color.TRANSPARENT;
+                                colorStatusTo = 0xff0277bd;
+                            } else {
+                                if (!mStatusBarShow)
+                                    return;
+                                mStatusBarShow = false;
+                                colorStatusTo = Color.TRANSPARENT;
+                                colorStatusFrom = 0xff0277bd;
+                            }
+                            ValueAnimator colorStatusAnimation = ValueAnimator.ofObject(new ArgbEvaluator(), colorStatusFrom, colorStatusTo);
+                            colorStatusAnimation.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                                @Override
+                                public void onAnimationUpdate(ValueAnimator animation) {
+                                    getWindow().setStatusBarColor((Integer)animation.getAnimatedValue());
+                                }
+                            });
+                            colorStatusAnimation.setDuration(500);
+                            colorStatusAnimation.setStartDelay(0);
+                            colorStatusAnimation.start();
+//                            getWindow().setStatusBarColor(0xff0277bd);
+//                            getWindow().setStatusBarColor(Color.TRANSPARENT);
                         }
                     });
 
