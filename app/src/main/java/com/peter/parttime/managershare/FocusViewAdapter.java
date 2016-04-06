@@ -7,6 +7,7 @@ import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Message;
+import android.provider.ContactsContract;
 import android.support.v4.view.PagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.view.LayoutInflater;
@@ -38,40 +39,59 @@ public class FocusViewAdapter extends PagerAdapter{
         @Override
         public void onClick(View v) {
                 int position = 0;
-                int size = mViews.size();
-                for (; position < size; position++) {
-                    if (v == mViews.get(position).v) {
-                        break;
+                synchronized (mViews) {
+                    int size = mViews.size();
+                    for (; position < size; position++) {
+                        if (v == mViews.get(position).v) {
+                            break;
+                        }
                     }
-                }
-                ManagerShareActivity.dbg("Click: " + position + " @ " + mViews.get(position).paper.mHref);
-                if (position >= 0 && mViews.size() > position) {
-                    ManagerShareActivity.switchToArticle(mActivity,
-                            mViews.get(position).paper.mHref,
-                            mViews.get(position).paper.mPicture,
-                            mViews.get(position).paper.mTitle,
-                            v.findViewById(R.id.image),
-                            v.findViewById(R.id.title));
+                    if (position >= size)
+                        return;
+                    ManagerShareActivity.dbg("Click: " + position + " @ " + mViews.get(position).paper.mHref);
+                    if (position >= 0 && mViews.size() > position) {
+                        ManagerShareActivity.switchToArticle(mActivity,
+                                mViews.get(position).paper.mHref,
+                                mViews.get(position).paper.mPicture,
+                                mViews.get(position).paper.mTitle,
+                                v.findViewById(R.id.image),
+                                v.findViewById(R.id.title));
+                    }
                 }
         }
     };
 
     public void updateDatas() {
         if (papers.size() != 0) {
-            for (ManagerShareActivity.Paper paper : papers) {
-                ViewGroup vg = (ViewGroup) LayoutInflater.from(mActivity).inflate(R.layout.focus_view,  null, false);
-                TextView tv = (TextView) vg.findViewById(R.id.title);
-                tv.setText(paper.mTitle);
-                ImageView v = (ImageView) vg.findViewById(R.id.image);
-                v.setImageResource(R.drawable.p1);
-                vg.setOnClickListener(itemClickListener);
-                VM vm = new VM();
-                vm.v = vg;
-                vm.bm = null;
-                vm.paper = paper;
-                mViews.add(vm);
+            synchronized (mViews) {
+                int vSize = mViews.size();
+                for (int index = 0; index < papers.size(); index++) {
+                    ManagerShareActivity.Paper paper = papers.get(index);
+                    VM vm = null;
+                    ViewGroup vg;
+                    TextView tv;
+                    ImageView v;
+                    if (index < vSize) {
+                        vm = mViews.get(index);
+                        vg = (ViewGroup) vm.v;
+                        v = (ImageView) vg.findViewById(R.id.image);
+                    } else {
+                        vm = new VM();
+                        vg = (ViewGroup) LayoutInflater.from(mActivity).inflate(R.layout.focus_view, null, false);
+                        v = (ImageView) vg.findViewById(R.id.image);
+                        v.setImageResource(R.drawable.p1);
+                        mViews.add(vm);
+                    }
+                    tv = (TextView) vg.findViewById(R.id.title);
+                    tv.setText(paper.mTitle);
+                    vg.setOnClickListener(itemClickListener);
+                    vm.v = vg;
+                    vm.bm = null;
+                    vm.paper = paper;
+                }
             }
         }
+        this.notifyDataSetChanged();
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -155,6 +175,9 @@ public class FocusViewAdapter extends PagerAdapter{
 
     @Override
     public int getItemPosition(Object object) {
-        return mViews.indexOf(object);
+        int index = mViews.indexOf(object);
+//        if (index == -1)
+//            return POSITION_NONE;
+        return index;
     }
 }
