@@ -174,6 +174,8 @@ public class WebArticleActivity extends Activity {
                         Bitmap bm = ManagerShareActivity.getImageFromFile(image);
                         if (bm != null)
                             mImage.setImageBitmap(bm);
+                        else
+                            mImage.setImageResource(R.drawable.p1);
                     }
 
                     v.setOnSwipeListener(new ArticleScrollView.OnSwipeListener() {
@@ -199,15 +201,19 @@ public class WebArticleActivity extends Activity {
 
                             Integer colorStatusFrom = 0;
                             Integer colorStatusTo = 0;
-                            if ((bHeight+mScrollView.getScrollY()) > vHeight) {
-                                if (mStatusBarShow)
+                            int scrollY = mScrollView.getScrollY();
+                            if ((bHeight+scrollY) > vHeight) {
+                                if (mStatusBarShow) {
                                     return;
+                                }
                                 mStatusBarShow = true;
                                 colorStatusFrom = Color.TRANSPARENT;
                                 colorStatusTo = 0xff0277bd;
                             } else {
-                                if (!mStatusBarShow)
+                                if (!mStatusBarShow) {
+                                    mImage.setTranslationY(scrollY >> 1);
                                     return;
+                                }
                                 mStatusBarShow = false;
                                 colorStatusTo = Color.TRANSPARENT;
                                 colorStatusFrom = 0xff0277bd;
