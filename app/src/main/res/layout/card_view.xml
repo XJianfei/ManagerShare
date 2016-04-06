@@ -5,6 +5,7 @@
     android:layout_height="match_parent"
     android:layout_margin="2dp"
     android:orientation="horizontal"
+    android:transitionName="content"
     android:foreground="?android:attr/selectableItemBackground"
     card_view:cardBackgroundColor="@color/carview_backgroud"
     card_view:cardCornerRadius="5dp" >
@@ -26,7 +27,6 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:transitionName="content"
                 android:paddingTop="5dp"
                 android:textStyle="bold"
                 android:textColor="@color/carview_font_color"

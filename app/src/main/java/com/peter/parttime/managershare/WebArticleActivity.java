@@ -14,6 +14,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.support.v4.app.ActivityCompat;
 import android.text.Html;
+import android.transition.Explode;
 import android.transition.Transition;
 import android.transition.TransitionManager;
 import android.util.Log;
@@ -93,6 +94,7 @@ public class WebArticleActivity extends Activity {
             window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
             window.setStatusBarColor(Color.TRANSPARENT);
             window.setNavigationBarColor(Color.TRANSPARENT);
+            window.setEnterTransition(new Explode());
         }
 
         setContentView(R.layout.web_article);
@@ -248,7 +250,11 @@ public class WebArticleActivity extends Activity {
         if (e != null) {
             article.content = article.content.replace(e.outerHtml(), "");
         }
-        article.lead = doc.select(".article .post_lead_r").first().text();
+        e = doc.select(".article .post_lead_r").first();
+        if (e == null)
+            article.lead = "";
+        else
+            article.lead = e.text();
         article.meta = doc.select(".post_meta").text();
         e = doc.select(".article img").first();
         if (e != null) {

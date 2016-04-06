@@ -259,7 +259,7 @@ public class ManagerShareActivity extends Activity implements
             switchToArticle(ManagerShareActivity.this, p.mHref, p.mPicture,
                     p.mTitle,
                     v.findViewById(R.id.pic),
-                    v.findViewById(R.id.title)
+                    v
                     );
 
         }
@@ -555,7 +555,7 @@ public class ManagerShareActivity extends Activity implements
         mPapers.remove(position);
     }
     private void removeNew(int position) {
-        removeNew(position);
+        removeNewData(position);
         Message msg = mHandler.obtainMessage(MSG_REMOVE_NEWS, position, 1);
         mHandler.sendMessage(msg);
     }
